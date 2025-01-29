@@ -1,0 +1,45 @@
+/* filepath: /c:/Users/DrPower/OneDrive/Documents/code/Gestion projet/Mashru3/static/css/styles.css */
+.password-hint {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.input-group-text {
+    cursor: pointer;
+    background-color: transparent; /* Ensure no background color */
+    border: none; /* Remove border */
+}
+
+.custom-heading {
+    margin-left: 10px; /* Adjust this value to move the heading slightly to the left */
+    font-family: 'Roboto Flex', sans-serif; /* Apply Roboto Flex font */
+}
+
+.form-control, .btn {
+    border-radius: 0; /* Remove border-radius for input fields and button */
+}
+
+.form-control {
+    background-color: #f1f3f4; /* Google's default input field background color */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* Add shadow below */
+    border: 1px solid #ccc; /* Add border */
+}
+
+.account-hint {
+    font-size: 0.9em;
+    color: #666;
+    padding-top: 15px; /* Add top padding */
+    margin-left: 10px; /* Move a little bit to the left */
+}
+
+.account-hint .text-primary {
+    color: #007bff; /* Same blue as the buttons */
+}
+
+.form-check-label {
+    margin-left: 5px;
+}
+
+.text-primary {
+    color: #007bff !important; /* Ensure the link is blue */
+}
