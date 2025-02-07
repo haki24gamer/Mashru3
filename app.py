@@ -1,24 +1,108 @@
 # filepath: /c:/Users/DrPower/OneDrive/Documents/code/Gestion projet/my-flask-app/app.py
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import date
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
+app.config['SECRET_KEY'] = 'your_secret_key'
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    user_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+
+class Project(db.Model):
+    project_id = db.Column(db.Integer, primary_key=True)
+    name_project = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    image_url = db.Column(db.String(255))
+    created_date = db.Column(db.Date, nullable=False)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+
+class Participe(db.Model):
+    role = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), primary_key=True)
 
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        # Handle login logic here
-        return redirect(url_for('home'))
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            session['user_id'] = user.user_id
+            return redirect(url_for('dashboard'))
+        else:
+            return "Invalid credentials"
     return render_template('connexion.html')
 
-@app.route('/inscription')
+@app.route('/inscription', methods=['GET', 'POST'])
 def inscription():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        password = generate_password_hash(request.form['password'])
+        new_user = User(name=name, email=email, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for('connexion'))
     return render_template('inscription.html')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    user = User.query.get(session['user_id'])
+    return render_template('dashboard.html', user_first_name=user.name)
+
+@app.route('/projects')
+def projects():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    user_id = session['user_id']
+    user_projects = db.session.query(Project).join(Participe).filter(Participe.user_id == user_id).all()
+    return render_template('project.html', projects=user_projects)
+
+@app.route('/add_project', methods=['GET', 'POST'])
+def add_project():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    if request.method == 'POST':
+        name_project = request.form['name_project']
+        description = request.form['description']
+        image_url = request.form['image_url']
+        created_date = date.today()
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+        new_project = Project(name_project=name_project, description=description, image_url=image_url, created_date=created_date, start_date=start_date, end_date=end_date)
+        db.session.add(new_project)
+        db.session.commit()
+        user_id = session['user_id']
+        new_participe = Participe(role='Owner', user_id=user_id, project_id=new_project.project_id)
+        db.session.add(new_participe)
+        db.session.commit()
+        return redirect(url_for('projects'))
+    return render_template('add_project.html')
+
+@app.route('/project/<int:project_id>')
+def project_detail(project_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    project = Project.query.get_or_404(project_id)
+    participants = db.session.query(User).join(Participe).filter(Participe.project_id == project_id).all()
+    return render_template('project_detail.html', project=project, participants=participants)
 
 @app.route('/')
 def home():
-    return redirect(url_for('connexion'))
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
