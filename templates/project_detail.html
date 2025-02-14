@@ -5,52 +5,52 @@
 {% block content %}
 <div class="container-fluid" style="padding-right: 0; margin-right: 0;">
     <h1 class="mt-4">{{ project.name_project }}</h1>
-    <hr>
-    <ul class="nav nav-tabs" id="projectTab" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true" style="color: #007bff; font-weight: bold;">Aperçu</a>
+    
+    <ul class="nav" id="projectTab" role="tablist" style="list-style-type: none; padding: 0; display: flex; justify-content: flex-start; margin-top: 20px;">
+        <li class="nav-item {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
+            <a class="nav-link" id="overview-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='overview') }}" role="tab" aria-controls="overview" aria-selected="true" style="position: relative;">Aperçu</a>
+            {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}
+                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
+            {% endif %}
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="tasks-tab" data-toggle="tab" href="#tasks" role="tab" aria-controls="tasks" aria-selected="false" style="color: #007bff; font-weight: bold;">Tâches</a>
+        <li class="nav-item {% if request.args.get('tab') == 'timeline' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
+            <a class="nav-link" id="timeline-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='timeline') }}" role="tab" aria-controls="timeline" aria-selected="false" style="position: relative;">Chronologie</a>
+            {% if request.args.get('tab') == 'timeline' %}
+                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
+            {% endif %}
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="team-tab" data-toggle="tab" href="#team" role="tab" aria-controls="team" aria-selected="false" style="color: #007bff; font-weight: bold;">Équipe</a>
+        <li class="nav-item {% if request.args.get('tab') == 'tasks' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
+            <a class="nav-link" id="tasks-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='tasks') }}" role="tab" aria-controls="tasks" aria-selected="false" style="position: relative;">Tâches</a>
+            {% if request.args.get('tab') == 'tasks' %}
+                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
+            {% endif %}
+        </li>
+        <li class="nav-item {% if request.args.get('tab') == 'team' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
+            <a class="nav-link" id="team-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='team') }}" role="tab" aria-controls="team" aria-selected="false" style="position: relative;">Équipe</a>
+            {% if request.args.get('tab') == 'team' %}
+                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
+            {% endif %}
+        </li>
+        <li class="nav-item {% if request.args.get('tab') == 'admin' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
+            <a class="nav-link" id="admin-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" role="tab" aria-controls="admin" aria-selected="false" style="position: relative;">Admin</a>
+            {% if request.args.get('tab') == 'admin' %}
+                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
+            {% endif %}
         </li>
     </ul>
+    <hr style="margin-top: 0;">
     <div class="tab-content" id="projectTabContent">
-        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-            <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
-                <div class="card-body">
-                    <p><strong>Description:</strong> {{ project.description }}</p>
-                    <p><strong>Date de Création:</strong> {{ project.created_date }}</p>
-                    <p><strong>Date de Début:</strong> {{ project.start_date }}</p>
-                    <p><strong>Date de Fin:</strong> {{ project.end_date }}</p>
-                    <img src="{{ project.image_url }}" alt="Project Image" class="img-fluid">
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane fade" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
-            <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
-                <div class="card-body">
-                    <!-- Tâches content will go here -->
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane fade" id="team" role="tabpanel" aria-labelledby="team-tab">
-            <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
-                <div class="card-body">
-                    <h5>Participants:</h5>
-                    <ul class="list-group">
-                        {% for participant in participants %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ participant.name }}
-                            <i class="material-icons-outlined">person</i>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
+        {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}
+            {% include 'project_overview.html' %}
+        {% elif request.args.get('tab') == 'timeline' %}
+            {% include 'project_timeline.html' %}
+        {% elif request.args.get('tab') == 'tasks' %}
+            {% include 'project_tasks.html' %}
+        {% elif request.args.get('tab') == 'team' %}
+            {% include 'project_team.html' %}
+        {% elif request.args.get('tab') == 'admin' %}
+            {% include 'project_admin.html' %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}

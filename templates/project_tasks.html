@@ -1,0 +1,143 @@
+<div class="tab-pane fade show active" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
+    <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px; padding-left: 15px; padding-right: 15px;">
+        <div class="card-body">
+            <div class="kanban-board" style="display: flex; justify-content: space-around;">
+                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 style="font-size: 13.25px; font-weight: normal;">À faire</h3>
+                        <div style="width: 250px;"></div>
+                        <!-- Pending tasks will be displayed here -->
+                        <div id="pendingTasks">
+                            {% for task in tasks if task.status == 'Pending' %}
+                                <div class="task" style="position: relative;">
+                                    <strong>{{ task.title }}</strong>
+                                    <p>{{ task.description }}</p>
+                                    <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
+                                        <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in participants %}{{ participant.name }}<br>{% endfor %}">
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
+                    </button>
+                </div>
+                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 style="font-size: 13.25px; font-weight: normal;">En cours</h3>
+                        <div style="width: 250px;"></div>
+                        <!-- Tasks will go here -->
+                    </div>
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
+                    </button>
+                </div>
+                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 style="font-size: 13.25px; font-weight: normal;">Terminer</h3>
+                        <div style="width: 250px;"></div>
+                        <!-- Tasks will go here -->
+                    </div>
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Task Modal -->
+<div class="modal fade" id="newTaskModal" tabindex="-1" role="dialog" aria-labelledby="newTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newTaskModalLabel">Créer une nouvelle tâche</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="newTaskForm">
+                    <div class="form-group">
+                        <label for="taskTitle">Titre de la tâche</label>
+                        <input type="text" class="form-control" id="taskTitle" placeholder="Entrez le titre de la tâche">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea class="form-control" id="taskDescription" rows="3" placeholder="Entrez la description de la tâche"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priorité</label>
+                        <select class="form-control" id="taskPriority">
+                            <option>Low</option>
+                            <option>Medium</option>
+                            <option>High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskStartDate">Date de début</label>
+                        <input type="date" class="form-control" id="taskStartDate" placeholder="dd/mm/yyyy">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskEndDate">Date de fin</label>
+                        <input type="date" class="form-control" id="taskEndDate" placeholder="dd/mm/yyyy">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="createTask()">Créer la tâche</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function(){
+    $('[data-toggle="popover"]').popover({
+        html: true,
+        placement: 'top'
+    });
+});
+
+function createTask() {
+    const title = document.getElementById('taskTitle').value;
+    const description = document.getElementById('taskDescription').value;
+    const priority = document.getElementById('taskPriority').value;
+    const startDate = document.getElementById('taskStartDate').value;
+    const endDate = document.getElementById('taskEndDate').value;
+
+    fetch('/add_task', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            priority: priority,
+            start_date: startDate,
+            end_date: endDate,
+            status: 'Pending',
+            project_id: "{{ project.project_id }}",
+            user_id: "{{ session['user_id'] }}"
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Logic to add the new task to the Kanban board
+            // ...
+            $('#newTaskModal').modal('hide');
+        } else {
+            alert('Failed to create task');
+        }
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+        alert('Failed to create task');
+    });
+}
+</script>
