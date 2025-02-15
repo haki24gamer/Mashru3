@@ -98,11 +98,11 @@ def project_detail(project_id):
     participants = db.session.query(User).join(Participe).filter(Participe.project_id == project_id).all()
     return render_template('project_detail.html', project=project, participants=participants)
 
-@app.route('/')
-def home():
-    return redirect(url_for('dashboard'))
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+    
+@app.route('/')
+def home():
+    return redirect(url_for('dashboard'))
