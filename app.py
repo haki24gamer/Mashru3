@@ -2,11 +2,24 @@ from flask import Flask, render_template, redirect, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
+import mysql.connector
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
+
+# Function to create database if it doesn't exist
+def create_database():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password=""
+    )
+    cursor = conn.cursor()
+    cursor.execute("CREATE DATABASE IF NOT EXISTS Mashru3")
+    conn.close()
+
 
 # User table
 class User(db.Model):
@@ -57,6 +70,11 @@ class Assigned(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
     note = db.Column(db.Text)
     created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+
+# Ensure the database and tables are created
+with app.app_context():
+    create_database()  # Ensure database exists
+    db.create_all()    # Create tables if they don't exist
 
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
