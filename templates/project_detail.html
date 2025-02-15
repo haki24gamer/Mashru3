@@ -1,10 +1,10 @@
 {% extends "project.html" %}
 
-{% block title %}{{ project.name_project }}{% endblock %}
+{% block title %}Mashru3: {{ project.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="padding-right: 0; margin-right: 0;">
-    <h1 class="mt-4">{{ project.name_project }}</h1>
+    <h1 class="mt-4">{{ project.name }}</h1>
     
     <ul class="nav" id="projectTab" role="tablist" style="list-style-type: none; padding: 0; display: flex; justify-content: flex-start; margin-top: 20px;">
         <li class="nav-item {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">

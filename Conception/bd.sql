@@ -5,7 +5,7 @@ CREATE TABLE User (
     image VARCHAR(255),
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATE DEFAULT CURRENT_DATE
 );
 
 -- Project table
@@ -14,8 +14,10 @@ CREATE TABLE Project (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     image VARCHAR(255),
-    finished_date TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    start_date DATE NULL,
+    end_date DATE NULL,
+    finished_date DATE NULL,
+    created_at DATE DEFAULT CURRENT_DATE
 );
 
 -- Participate table (User-Project relationship)
@@ -23,7 +25,7 @@ CREATE TABLE Participate (
     user_id INT,
     project_id INT,
     role VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at DATE DEFAULT CURRENT_DATE,
     PRIMARY KEY (user_id, project_id),
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
     FOREIGN KEY (project_id) REFERENCES Project(project_id) ON DELETE CASCADE
@@ -37,10 +39,10 @@ CREATE TABLE Task (
     description TEXT,
     priority INT CHECK (priority BETWEEN 1 AND 5),
     status ENUM('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE') DEFAULT 'TODO',
-    start_date TIMESTAMP NULL,
-    end_date TIMESTAMP NULL,
-    finished_date TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    finished_date DATE NULL,
+    created_at DATE DEFAULT CURRENT_DATE,
     FOREIGN KEY (project_id) REFERENCES Project(project_id) ON DELETE CASCADE
 );
 
@@ -48,7 +50,7 @@ CREATE TABLE Task (
 CREATE TABLE Predecessor (
     task_id INT,
     predecessor_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at DATE DEFAULT CURRENT_DATE,
     PRIMARY KEY (task_id, predecessor_id),
     FOREIGN KEY (task_id) REFERENCES Task(task_id) ON DELETE CASCADE,
     FOREIGN KEY (predecessor_id) REFERENCES Task(task_id) ON DELETE CASCADE,
@@ -60,7 +62,7 @@ CREATE TABLE Assigned (
     user_id INT,
     task_id INT,
     note TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at DATE DEFAULT CURRENT_DATE,
     PRIMARY KEY (user_id, task_id),
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
     FOREIGN KEY (task_id) REFERENCES Task(task_id) ON DELETE CASCADE

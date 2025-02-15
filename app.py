@@ -35,15 +35,17 @@ class Project(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     image = db.Column(db.String(255))
-    finished_date = db.Column(db.TIMESTAMP, nullable=True)
-    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    start_date = db.Column(db.DATE, nullable=True)
+    end_date = db.Column(db.DATE, nullable=True)
+    finished_date = db.Column(db.DATE, nullable=True)
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Participate table
 class Participate(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), primary_key=True)
     role = db.Column(db.String(50), nullable=False)
-    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Task table
 class Task(db.Model):
@@ -53,23 +55,23 @@ class Task(db.Model):
     description = db.Column(db.Text)
     priority = db.Column(db.Integer, nullable=False)
     status = db.Column(db.Enum('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'), default='TODO')
-    start_date = db.Column(db.TIMESTAMP, nullable=True)
-    end_date = db.Column(db.TIMESTAMP, nullable=True)
-    finished_date = db.Column(db.TIMESTAMP, nullable=True)
-    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    start_date = db.Column(db.DATE, nullable=True)
+    end_date = db.Column(db.DATE, nullable=True)
+    finished_date = db.Column(db.DATE, nullable=True)
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Predecessor table
 class Predecessor(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
     predecessor_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
-    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Assigned table
 class Assigned(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
     note = db.Column(db.Text)
-    created_at = db.Column(db.TIMESTAMP, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Ensure the database and tables are created
 with app.app_context():
@@ -114,7 +116,8 @@ def projects():
         return redirect(url_for('connexion'))
     user_id = session['user_id']
     user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
-    return render_template('project.html', projects=user_projects)
+    total_projects = len(user_projects)
+    return render_template('project.html', projects=user_projects, total_projects=total_projects)
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
@@ -124,8 +127,10 @@ def add_project():
         name = request.form['name']
         description = request.form['description']
         image = request.form['image']
-        created_date = date.today()
-        new_project = Project(name=name, description=description, image=image, created_date=created_date)
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+        created_at = date.today()
+        new_project = Project(name=name, description=description, image=image, start_date=start_date, end_date=end_date, created_at=created_at)
         db.session.add(new_project)
         db.session.commit()
         user_id = session['user_id']
