@@ -101,43 +101,4 @@ $(document).ready(function(){
         placement: 'top'
     });
 });
-
-function createTask() {
-    const title = document.getElementById('taskTitle').value;
-    const description = document.getElementById('taskDescription').value;
-    const priority = document.getElementById('taskPriority').value;
-    const startDate = document.getElementById('taskStartDate').value;
-    const endDate = document.getElementById('taskEndDate').value;
-
-    fetch('/add_task', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            title: title,
-            description: description,
-            priority: priority,
-            start_date: startDate,
-            end_date: endDate,
-            status: 'Pending',
-            project_id: "{{ project.project_id }}",
-            user_id: "{{ session['user_id'] }}"
-        }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Logic to add the new task to the Kanban board
-            // ...
-            $('#newTaskModal').modal('hide');
-        } else {
-            alert('Failed to create task');
-        }
-    })
-    .catch((error) => {
-        console.error('Error:', error);
-        alert('Failed to create task');
-    });
-}
 </script>
