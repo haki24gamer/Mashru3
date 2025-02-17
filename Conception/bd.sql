@@ -37,7 +37,7 @@ CREATE TABLE Task (
     project_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    priority INT CHECK (priority BETWEEN 1 AND 5),
+    priority VARCHAR(10) CHECK (priority IN ('low', 'medium', 'high')),
     status ENUM('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE') DEFAULT 'TODO',
     start_date DATE NULL,
     end_date DATE NULL,
@@ -75,3 +75,6 @@ CREATE INDEX idx_participate_project ON Participate(project_id);
 CREATE INDEX idx_participate_user ON Participate(user_id);
 CREATE INDEX idx_assigned_task ON Assigned(task_id);
 CREATE INDEX idx_assigned_user ON Assigned(user_id);
+
+-- Add some sample data
+INSERT INTO articipate (user_id, project_id, role) VALUES (2, 1, 'membre');

@@ -7,9 +7,9 @@
                         <h3 style="font-size: 13.25px; font-weight: normal;">À faire</h3>
                         <div style="width: 250px;"></div>
                         <!-- Pending tasks will be displayed here -->
-                        <div id="pendingTasks">
-                            {% for task in tasks if task.status == 'Pending' %}
-                                <div class="task" style="position: relative;">
+                        <div id="todoTasks">
+                            {% for task in tasks if task.status == 'TODO' %}
+                            <div class="task" style="position: relative;">
                                     <strong>{{ task.title }}</strong>
                                     <p>{{ task.description }}</p>
                                     <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
@@ -19,7 +19,7 @@
                             {% endfor %}
                         </div>
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
                         <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
                     </button>
                 </div>
@@ -28,8 +28,19 @@
                         <h3 style="font-size: 13.25px; font-weight: normal;">En cours</h3>
                         <div style="width: 250px;"></div>
                         <!-- Tasks will go here -->
+                         <div id="pendingTasks">
+                            {% for task in tasks if task.status == 'IN_PROGRESS' %}
+                            <div class="task" style="position: relative;">
+                                <strong>{{ task.title }}</strong>
+                                <p>{{ task.description }}</p>
+                                <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
+                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in participants %}{{ participant.name }}<br>{% endfor %}">
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                    </div>
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('IN_PROGRESS')">
                         <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
                     </button>
                 </div>
@@ -38,8 +49,19 @@
                         <h3 style="font-size: 13.25px; font-weight: normal;">Terminer</h3>
                         <div style="width: 250px;"></div>
                         <!-- Tasks will go here -->
+                         <div id="doneTasks">
+                            {% for task in tasks if task.status == 'DONE' %}
+                            <div class="task" style="position: relative;">
+                                <strong>{{ task.title }}</strong>
+                                <p>{{ task.description }}</p>
+                                <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
+                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in participants %}{{ participant.name }}<br>{% endfor %}">
+                                </div>
+                            </div>
+                        {% endfor %}
+                         
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal">
+                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('DONE')">
                         <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
                     </button>
                 </div>
@@ -71,9 +93,9 @@
                     <div class="form-group">
                         <label for="taskPriority">Priorité</label>
                         <select class="form-control" id="taskPriority">
-                            <option>Low</option>
-                            <option>Medium</option>
-                            <option>High</option>
+                            <option>low</option>
+                            <option>medium</option>
+                            <option>high</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -83,6 +105,14 @@
                     <div class="form-group">
                         <label for="taskEndDate">Date de fin</label>
                         <input type="date" class="form-control" id="taskEndDate" placeholder="dd/mm/yyyy">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskMember">Assigner à</label>
+                        <select class="form-control" id="taskMember">
+                            {% for participant in participants %}
+                                <option value="{{ participant.user_id }}">{{ participant.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </form>
             </div>
@@ -95,10 +125,55 @@
 </div>
 
 <script>
+let taskStatus = 'TODO';
+
+function setTaskStatus(status) {
+    taskStatus = status;
+}
+
 $(document).ready(function(){
     $('[data-toggle="popover"]').popover({
         html: true,
         placement: 'top'
     });
 });
+
+function createTask() {
+    const title = document.getElementById('taskTitle').value;
+    const description = document.getElementById('taskDescription').value;
+    const priority = document.getElementById('taskPriority').value;
+    const startDate = document.getElementById('taskStartDate').value;
+    const endDate = document.getElementById('taskEndDate').value;
+    const memberId = document.getElementById('taskMember').value;
+
+    fetch('/add_task', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            priority: priority,
+            start_date: startDate,
+            end_date: endDate,
+            status: taskStatus,
+            project_id: "{{ project.project_id }}",
+            member_id: memberId
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message === 'Task created successfully') {
+            $('#newTaskModal').modal('hide');
+            location.reload(); // Reload the page to show the new task
+        } else {
+            alert('Failed to create task');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create task');
+    });
+}
 </script>

@@ -53,7 +53,7 @@ class Task(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    priority = db.Column(db.Integer, nullable=False)
+    priority = db.Column(db.Enum('low', 'medium', 'high'), nullable=False)
     status = db.Column(db.Enum('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'), default='TODO')
     start_date = db.Column(db.DATE, nullable=True)
     end_date = db.Column(db.DATE, nullable=True)
@@ -140,13 +140,37 @@ def add_project():
         return redirect(url_for('projects'))
     return render_template('add_project.html')
 
+@app.route('/add_task', methods=['POST'])
+def add_task():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    data = request.get_json()
+    new_task = Task(
+        project_id=data['project_id'],
+        title=data['title'],
+        description=data['description'],
+        priority=data['priority'],
+        status=data['status'],
+        start_date=data['start_date'],
+        end_date=data['end_date']
+    )
+    db.session.add(new_task)
+    db.session.commit()
+
+    assigned = Assigned(user_id=data['member_id'], task_id=new_task.task_id)
+    db.session.add(assigned)
+    db.session.commit()
+
+    return {'message': 'Task created successfully'}, 200
+
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
     project = Project.query.get_or_404(project_id)
     participants = db.session.query(User).join(Participate).filter(Participate.project_id == project_id).all()
-    return render_template('project_detail.html', project=project, participants=participants)
+    tasks = Task.query.filter_by(project_id=project_id).all()
+    return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 
 @app.route('/')
 def home():
