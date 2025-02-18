@@ -181,6 +181,25 @@ def add_member():
     else:
         return {'message': 'User not found'}, 404
 
+@app.route('/assign_user', methods=['POST'])
+def assign_user():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    data = request.get_json()
+    user_ids = data['user_ids']
+    task_id = data['task_id']
+    note = data.get('note', '')
+
+    for user_id in user_ids:
+        # Check if the user is already assigned to the task
+        existing_assignment = Assigned.query.filter_by(user_id=user_id, task_id=task_id).first()
+        if not existing_assignment:
+            new_assignment = Assigned(user_id=user_id, task_id=task_id, note=note)
+            db.session.add(new_assignment)
+
+    db.session.commit()
+    return {'message': 'User(s) assigned successfully'}, 200
+
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
     if 'user_id' not in session:
@@ -189,10 +208,10 @@ def project_detail(project_id):
     participants = db.session.query(User).join(Participate).filter(Participate.project_id == project_id).all()
     tasks = Task.query.filter_by(project_id=project_id).all()
     
-    # Fetch assigned user for each task
+    # Fetch assigned users for each task
     for task in tasks:
-        assigned_user = db.session.query(User).join(Assigned).filter(Assigned.task_id == task.task_id).first()
-        task.assigned_user = assigned_user
+        assigned_users = db.session.query(User).join(Assigned).filter(Assigned.task_id == task.task_id).all()
+        task.assigned_users = assigned_users
 
     return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 

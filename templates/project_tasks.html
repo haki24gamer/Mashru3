@@ -12,9 +12,17 @@
                             <div class="task" style="position: relative;">
                                 <strong>{{ task.title }}</strong>
                                 <p>{{ task.description }}</p>
-                                <p>Assigné à: {{ task.assigned_user.name if task.assigned_user else 'Non assigné' }}</p>
+                                <p>Assigné à: 
+                                    {% if task.assigned_users %}
+                                        {% for user in task.assigned_users %}
+                                            {{ user.name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Non assigné
+                                    {% endif %}
+                                </p>
                                 <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in task.assigned_users %}{{ participant.name }}<br>{% endfor %}">
+                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
                                 </div>
                                 <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
                                     Assigner un utilisateur
@@ -37,9 +45,17 @@
                             <div class="task" style="position: relative;">
                                 <strong>{{ task.title }}</strong>
                                 <p>{{ task.description }}</p>
-                                <p>Assigné à: {{ task.assigned_user.name if task.assigned_user else 'Non assigné' }}</p>
+                                <p>Assigné à: 
+                                    {% if task.assigned_users %}
+                                        {% for user in task.assigned_users %}
+                                            {{ user.name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Non assigné
+                                    {% endif %}
+                                </p>
                                 <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in task.assigned_users %}{{ participant.name }}<br>{% endfor %}">
+                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
                                 </div>
                                 <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
                                     Assigner un utilisateur
@@ -62,9 +78,17 @@
                             <div class="task" style="position: relative;">
                                 <strong>{{ task.title }}</strong>
                                 <p>{{ task.description }}</p>
-                                <p>Assigné à: {{ task.assigned_user.name if task.assigned_user else 'Non assigné' }}</p>
+                                <p>Assigné à: 
+                                    {% if task.assigned_users %}
+                                        {% for user in task.assigned_users %}
+                                            {{ user.name }}{% if not loop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Non assigné
+                                    {% endif %}
+                                </p>
                                 <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for participant in task.assigned_users %}{{ participant.name }}<br>{% endfor %}">
+                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
                                 </div>
                                 <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
                                     Assigner un utilisateur
@@ -118,14 +142,6 @@
                         <label for="taskEndDate">Date de fin</label>
                         <input type="date" class="form-control" id="taskEndDate" placeholder="dd/mm/yyyy">
                     </div>
-                    <div class="form-group">
-                        <label for="taskMember">Assigner à</label>
-                        <select class="form-control" id="taskMember">
-                            {% for participant in participants %}
-                                <option value="{{ participant.user_id }}">{{ participant.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -150,7 +166,7 @@
                 <form id="assignUserForm">
                     <div class="form-group">
                         <label for="taskUser">Utilisateur</label>
-                        <select class="form-control" id="taskUser">
+                        <select class="form-control" id="taskUser" multiple>
                             {% for participant in participants %}
                                 <option value="{{ participant.user_id }}">{{ participant.name }}</option>
                             {% endfor %}
@@ -191,8 +207,9 @@ $(document).ready(function(){
 
 function submitAssignUserForm() {
     const form = document.getElementById('assignUserForm');
+    const selectedUsers = Array.from(form.taskUser.selectedOptions).map(option => option.value);
     const data = {
-        user_id: form.taskUser.value,
+        user_ids: selectedUsers,
         note: form.note.value,
         task_id: form.task_id.value
     };
@@ -206,7 +223,8 @@ function submitAssignUserForm() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message === 'User assigned successfully') {
+        if (data.message === 'User(s) assigned successfully') {
+            $('#assignUserModal').modal('hide');
             location.reload();
         } else {
             alert('Failed to assign user: ' + data.message);
@@ -220,7 +238,6 @@ function createTask() {
     const priority = document.getElementById('taskPriority').value;
     const startDate = document.getElementById('taskStartDate').value;
     const endDate = document.getElementById('taskEndDate').value;
-    const memberId = document.getElementById('taskMember').value;
 
     fetch('/add_task', {
         method: 'POST',
@@ -234,8 +251,7 @@ function createTask() {
             start_date: startDate,
             end_date: endDate,
             status: taskStatus,
-            project_id: "{{ project.project_id }}",
-            member_id: memberId
+            project_id: "{{ project.project_id }}"
         }),
     })
     .then(response => response.json())
