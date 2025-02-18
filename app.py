@@ -157,10 +157,6 @@ def add_task():
     db.session.add(new_task)
     db.session.commit()
 
-    assigned = Assigned(user_id=data['member_id'], task_id=new_task.task_id)
-    db.session.add(assigned)
-    db.session.commit()
-
     return {'message': 'Task created successfully'}, 200
 
 @app.route('/add_member', methods=['POST'])
