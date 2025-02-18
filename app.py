@@ -188,6 +188,12 @@ def project_detail(project_id):
     project = Project.query.get_or_404(project_id)
     participants = db.session.query(User).join(Participate).filter(Participate.project_id == project_id).all()
     tasks = Task.query.filter_by(project_id=project_id).all()
+    
+    # Fetch assigned user for each task
+    for task in tasks:
+        assigned_user = db.session.query(User).join(Assigned).filter(Assigned.task_id == task.task_id).first()
+        task.assigned_user = assigned_user
+
     return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 
 @app.route('/')
