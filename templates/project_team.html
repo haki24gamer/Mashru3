@@ -2,7 +2,10 @@
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
             <h5>Participants:</h5>
-            <ul class="list-group">
+            <button type="button" class="btn btn-primary mt-3" data-toggle="modal" data-target="#addMemberModal">
+                Ajouter Membres
+            </button>
+            <ul class="list-group mt-3">
                 {% for participant in participants %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     {{ participant.name }}
@@ -13,3 +16,61 @@
         </div>
     </div>
 </div>
+
+<!-- Add Member Modal -->
+<div class="modal fade" id="addMemberModal" tabindex="-1" role="dialog" aria-labelledby="addMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMemberModalLabel">Ajouter Membres</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addMemberForm">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <input type="text" class="form-control" id="role" name="role" required>
+                    </div>
+                    <input type="hidden" id="project_id" name="project_id" value="{{ project.project_id }}">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddMemberForm()">Ajouter Membres</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitAddMemberForm() {
+    const form = document.getElementById('addMemberForm');
+    const data = {
+        email: form.email.value,
+        role: form.role.value,
+        project_id: form.project_id.value
+    };
+
+    fetch('/add_member', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message === 'Member added successfully') {
+            location.reload();
+        } else {
+            alert('Failed to add member: ' + data.message);
+        }
+    });
+}
+</script>

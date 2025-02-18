@@ -163,6 +163,24 @@ def add_task():
 
     return {'message': 'Task created successfully'}, 200
 
+@app.route('/add_member', methods=['POST'])
+def add_member():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    data = request.get_json()
+    user = User.query.filter_by(email=data['email']).first()
+    if user:
+        new_participate = Participate(
+            user_id=user.user_id,
+            project_id=data['project_id'],
+            role=data['role']
+        )
+        db.session.add(new_participate)
+        db.session.commit()
+        return {'message': 'Member added successfully'}, 200
+    else:
+        return {'message': 'User not found'}, 404
+
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
     if 'user_id' not in session:
