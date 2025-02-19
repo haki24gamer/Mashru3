@@ -20,6 +20,12 @@
                 <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined mr-2">chat_bubble_outline</i> Notification</a></li>
                 <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined mr-2">settings</i> Parametre</a></li>
             </ul>
+            <!-- Add logout button at bottom of sidebar -->
+            <div class="mt-auto">
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger d-flex align-items-center">
+                    <i class="material-icons-outlined mr-2">logout</i> Déconnexion
+                </a>
+            </div>
         </div>
         <div class="content flex-grow-1 p-3">
             {% block content %}

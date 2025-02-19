@@ -211,6 +211,11 @@ def project_detail(project_id):
 
     return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('connexion'))
+
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))
