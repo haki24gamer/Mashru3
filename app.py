@@ -97,7 +97,7 @@ def connexion():
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            session['user_id'] = user.user_id
+            session['user_id'] = user.user_id  # Session starts here
             return redirect(url_for('dashboard'))
         else:
             return "Invalid credentials"
@@ -254,7 +254,7 @@ def project_detail(project_id):
 
 @app.route('/logout')
 def logout():
-    session.clear()
+    session.clear()  # Session ends here
     return redirect(url_for('connexion'))
 
 @app.route('/')
