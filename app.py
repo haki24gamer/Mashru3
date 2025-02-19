@@ -3,11 +3,23 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 import mysql.connector
+from email.message import EmailMessage
+from flask_mail import Mail, Message
+import random
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
+
+# Configure Flask-Mail for Gmail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
+app.config['MAIL_PORT'] = 587  # Port for TLS
+app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'  # Replace with your Gmail address
+app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '  # Replace with your app password (not your Gmail password)
+app.config['MAIL_USE_TLS'] = True  # Use TLS
+app.config['MAIL_USE_SSL'] = False  # Don't use SSL
+mail = Mail(app)
 
 # Function to create database if it doesn't exist
 def create_database():
@@ -97,11 +109,40 @@ def inscription():
         name = request.form['name']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
-        new_user = User(name=name, email=email, password=password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('connexion'))
+        
+        # Generate OTP and store registration data in session
+        otp = str(random.randint(100000, 999999))
+        session['registration_data'] = {'name': name, 'email': email, 'password': password}
+        session['otp'] = otp
+        
+        # Send OTP to user's email
+        msg = Message('OTP Verification', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.body = f'Your OTP is: {otp}'
+        mail.send(msg)
+        
+        return redirect(url_for('verify_otp'))
     return render_template('inscription.html')
+
+@app.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
+    # Redirect if no registration data present
+    if 'registration_data' not in session or 'otp' not in session:
+        return redirect(url_for('inscription'))
+    error = None
+    if request.method == 'POST':
+        if request.form['otp'] == session['otp']:
+            data = session['registration_data']
+            # Create the user in the database
+            new_user = User(name=data['name'], email=data['email'], password=data['password'])
+            db.session.add(new_user)
+            db.session.commit()
+            # Clear registration data from session
+            session.pop('registration_data', None)
+            session.pop('otp', None)
+            return redirect(url_for('connexion'))
+        else:
+            error = 'Invalid OTP'
+    return render_template('verify_otp.html', error=error)
 
 @app.route('/dashboard')
 def dashboard():
