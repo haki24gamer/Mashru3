@@ -3,11 +3,22 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 import mysql.connector
+from email.message import EmailMessage
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
+
+# Configure Flask-Mail for Gmail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
+app.config['MAIL_PORT'] = 587  # Port for TLS
+app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'  # Replace with your Gmail address
+app.config['MAIL_PASSWORD'] = ''  # Replace with your app password (not your Gmail password)
+app.config['MAIL_USE_TLS'] = True  # Use TLS
+app.config['MAIL_USE_SSL'] = False  # Don't use SSL
+mail = Mail(app)
 
 # Function to create database if it doesn't exist
 def create_database():
