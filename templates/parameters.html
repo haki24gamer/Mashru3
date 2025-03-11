@@ -1,0 +1,730 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres{% endblock %}
+
+{% block styles %}
+<style>
+    .task-card {
+        border-left: 4px solid;
+        margin-bottom: 12px;
+    }
+    .priority-high { border-left-color: #dc3545; }
+    .priority-medium { border-left-color: #ffc107; }
+    .priority-low { border-left-color: #0d6efd; }
+    
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .project-section {
+        margin-bottom: 30px;
+    }
+    
+    .user-avatar {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: #4e73df;
+    }
+    
+    .nav-pills .nav-link {
+        color: #5a5c69;
+    }
+    
+    .nav-pills .nav-link:hover:not(.active) {
+        background-color: #eaecf4;
+    }
+    
+    .parameters-container {
+        min-height: 500px;
+    }
+    
+    .parameter-section {
+        display: none;
+    }
+    
+    .parameter-section.active {
+        display: block;
+    }
+    
+    /* Add these new styles for feedback */
+    .feedback-message {
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        display: none;
+    }
+    
+    .success-message {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .error-message {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .form-loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .btn-loading {
+        position: relative;
+        color: transparent !important;
+    }
+    
+    .btn-loading::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: calc(50% - 8px);
+        left: calc(50% - 8px);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">Paramètres</h1>
+    <hr>
+    
+    <div class="row mt-4">
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Catégories</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="nav flex-column nav-pills" id="parameters-tabs" role="tablist" aria-orientation="vertical">
+                        <a class="nav-link active" id="profile-tab" data-bs-toggle="pill" href="#profile-section" role="tab" aria-controls="profile-section" aria-selected="true">
+                            <i class="fas fa-user me-2"></i> Profil
+                        </a>
+                        <a class="nav-link" id="notifications-tab" data-bs-toggle="pill" href="#notifications-section" role="tab" aria-controls="notifications-section" aria-selected="false">
+                            <i class="fas fa-bell me-2"></i> Notifications
+                        </a>
+                        <a class="nav-link" id="appearance-tab" data-bs-toggle="pill" href="#appearance-section" role="tab" aria-controls="appearance-section" aria-selected="false">
+                            <i class="fas fa-palette me-2"></i> Apparence
+                        </a>
+                        <a class="nav-link" id="security-tab" data-bs-toggle="pill" href="#security-section" role="tab" aria-controls="security-section" aria-selected="false">
+                            <i class="fas fa-shield-alt me-2"></i> Sécurité
+                        </a>
+                        <a class="nav-link" id="tasks-tab" data-bs-toggle="pill" href="#tasks-section" role="tab" aria-controls="tasks-section" aria-selected="false">
+                            <i class="fas fa-tasks me-2"></i> Tâches
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="tab-content parameters-container" id="parameters-content">
+                <!-- Profile Section -->
+                <div class="tab-pane fade show active" id="profile-section" role="tabpanel" aria-labelledby="profile-tab">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-user me-2"></i> Profil utilisateur</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Feedback message for profile updates -->
+                            <div id="profileFeedback" class="feedback-message"></div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 text-center mb-4 mb-md-0">
+                                    {% if user.image %}
+                                        <img src="{{ user.image }}" alt="{{ user.name }}" class="user-avatar mb-3" id="currentProfileImage">
+                                    {% else %}
+                                        <div class="user-avatar mb-3 d-flex align-items-center justify-content-center bg-secondary" id="currentProfileImage">
+                                            <i class="fas fa-user fa-3x text-white"></i>
+                                        </div>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileImageModal">
+                                        <i class="fas fa-camera me-1"></i> Modifier la photo
+                                    </button>
+                                </div>
+                                <div class="col-md-8">
+                                    <form id="profileForm">
+                                        <div class="mb-3">
+                                            <label for="name" class="form-label">Nom</label>
+                                            <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}">
+                                            <div class="invalid-feedback" id="nameError"></div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="email" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                                            <div class="invalid-feedback" id="emailError"></div>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" id="saveProfileButton">
+                                            <i class="fas fa-save me-1"></i> Enregistrer les modifications
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Notifications Section -->
+                <div class="tab-pane fade" id="notifications-section" role="tabpanel" aria-labelledby="notifications-tab">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-bell me-2"></i> Préférences de notification</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Feedback message for notification preferences -->
+                            <div id="notificationsFeedback" class="feedback-message"></div>
+                            
+                            <form id="notificationsForm">
+                                <div class="mb-4">
+                                    <h5>Notifications par email</h5>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="emailTaskAssigned" checked>
+                                        <label class="form-check-label" for="emailTaskAssigned">Lorsqu'une tâche m'est assignée</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="emailTaskUpdate" checked>
+                                        <label class="form-check-label" for="emailTaskUpdate">Lorsqu'une tâche est mise à jour</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="emailProjectUpdate">
+                                        <label class="form-check-label" for="emailProjectUpdate">Mises à jour du projet</label>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <h5>Notifications dans l'application</h5>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="appTaskAssigned" checked>
+                                        <label class="form-check-label" for="appTaskAssigned">Lorsqu'une tâche m'est assignée</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="appTaskUpdate" checked>
+                                        <label class="form-check-label" for="appTaskUpdate">Lorsqu'une tâche est mise à jour</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="appProjectUpdate" checked>
+                                        <label class="form-check-label" for="appProjectUpdate">Mises à jour du projet</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="appDueDates" checked>
+                                        <label class="form-check-label" for="appDueDates">Rappels d'échéance</label>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="saveNotificationsButton">
+                                    <i class="fas fa-save me-1"></i> Enregistrer les préférences
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Appearance Section -->
+                <div class="tab-pane fade" id="appearance-section" role="tabpanel" aria-labelledby="appearance-tab">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-palette me-2"></i> Apparence</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Feedback message for appearance settings -->
+                            <div id="appearanceFeedback" class="feedback-message"></div>
+                            
+                            <form id="appearanceForm">
+                                <div class="mb-4">
+                                    <h5>Thème</h5>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="theme" id="themeLight" value="light" checked>
+                                        <label class="form-check-label" for="themeLight">
+                                            <i class="fas fa-sun me-1"></i> Clair
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="theme" id="themeDark" value="dark">
+                                        <label class="form-check-label" for="themeDark">
+                                            <i class="fas fa-moon me-1"></i> Sombre
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="theme" id="themeSystem" value="system">
+                                        <label class="form-check-label" for="themeSystem">
+                                            <i class="fas fa-laptop me-1"></i> Système
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="saveAppearanceButton">
+                                    <i class="fas fa-save me-1"></i> Appliquer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security Section -->
+                <div class="tab-pane fade" id="security-section" role="tabpanel" aria-labelledby="security-tab">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-shield-alt me-2"></i> Sécurité</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Feedback message for security settings -->
+                            <div id="securityFeedback" class="feedback-message"></div>
+                            
+                            <form id="securityForm">
+                                <div class="mb-4">
+                                    <h5>Changer le mot de passe</h5>
+                                    <div class="mb-3">
+                                        <label for="currentPassword" class="form-label">Mot de passe actuel</label>
+                                        <input type="password" class="form-control" id="currentPassword" name="currentPassword">
+                                        <div class="invalid-feedback" id="currentPasswordError"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="newPassword" class="form-label">Nouveau mot de passe</label>
+                                        <input type="password" class="form-control" id="newPassword" name="newPassword">
+                                        <div class="invalid-feedback" id="newPasswordError"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="confirmPassword" class="form-label">Confirmer le nouveau mot de passe</label>
+                                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword">
+                                        <div class="invalid-feedback" id="confirmPasswordError"></div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="changePasswordButton">
+                                    <i class="fas fa-key me-1"></i> Changer le mot de passe
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tasks Section -->
+                <div class="tab-pane fade" id="tasks-section" role="tabpanel" aria-labelledby="tasks-tab">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fas fa-tasks me-2"></i> Mes tâches</h4>
+                        </div>
+                        <div class="card-body">
+                            {% if projects_data %}
+                                {% for project_id, project in projects_data.items() %}
+                                    <div class="project-section">
+                                        <h5 class="border-bottom pb-2 mb-3">
+                                            <i class="fas fa-project-diagram me-2"></i> 
+                                            {{ project.name }}
+                                        </h5>
+                                        
+                                        {% if project.tasks %}
+                                            {% for task in project.tasks %}
+                                                <div class="task-card p-3 bg-light rounded priority-{{ task.priority }}">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <h6 class="mb-1">{{ task.title }}</h6>
+                                                        <div>
+                                                            {% if task.status == 'TODO' %}
+                                                                <span class="badge bg-secondary status-badge">À faire</span>
+                                                            {% elif task.status == 'IN_PROGRESS' %}
+                                                                <span class="badge bg-primary status-badge">En cours</span>
+                                                            {% elif task.status == 'REVIEW' %}
+                                                                <span class="badge bg-warning status-badge">Révision</span>
+                                                            {% elif task.status == 'DONE' %}
+                                                                <span class="badge bg-success status-badge">Terminée</span>
+                                                            {% endif %}
+                                                            
+                                                            {% if task.priority == 'high' %}
+                                                                <span class="badge bg-danger ms-1">Élevée</span>
+                                                            {% elif task.priority == 'medium' %}
+                                                                <span class="badge bg-warning ms-1">Moyenne</span>
+                                                            {% elif task.priority == 'low' %}
+                                                                <span class="badge bg-info ms-1">Basse</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    {% if task.end_date %}
+                                                        <small class="text-muted">
+                                                            <i class="far fa-calendar-alt me-1"></i> Échéance: {{ task.end_date }}
+                                                        </small>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <p class="text-muted fst-italic">Pas de tâches dans ce projet.</p>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-info-circle fa-3x mb-3 text-muted"></i>
+                                    <p class="mb-0">Vous n'avez pas encore de tâches assignées.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Image Modal -->
+<div class="modal fade" id="editProfileImageModal" tabindex="-1" aria-labelledby="editProfileImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProfileImageModalLabel">Modifier la photo de profil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Feedback message for image updates -->
+                <div id="imageFeedback" class="feedback-message"></div>
+                
+                <div class="mb-3">
+                    <label for="imageUrl" class="form-label">URL de l'image</label>
+                    <input type="text" class="form-control" id="imageUrl" name="imageUrl" value="{{ user.image or '' }}">
+                    <div class="form-text">Entrez l'URL d'une image en ligne.</div>
+                </div>
+                <div class="text-center mt-4">
+                    <p>Aperçu:</p>
+                    <div id="imagePreview" class="mx-auto" style="width: 100px; height: 100px; border-radius: 50%; background-color: #ccc; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                        {% if user.image %}
+                            <img src="{{ user.image }}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <i class="fas fa-user fa-2x text-white"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveImageButton">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Helper function to show feedback messages
+        function showFeedback(elementId, message, isSuccess) {
+            const feedbackElement = $(`#${elementId}`);
+            feedbackElement.removeClass('success-message error-message');
+            feedbackElement.addClass(isSuccess ? 'success-message' : 'error-message');
+            feedbackElement.text(message).slideDown();
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                feedbackElement.slideUp();
+            }, 5000);
+        }
+        
+        // Helper function to set button loading state
+        function setButtonLoading(button, isLoading) {
+            if (isLoading) {
+                button.addClass('btn-loading');
+            } else {
+                button.removeClass('btn-loading');
+            }
+            button.prop('disabled', isLoading);
+        }
+        
+        // Update image preview when URL changes
+        $('#imageUrl').on('input', function() {
+            const imageUrl = $(this).val();
+            if (imageUrl) {
+                $('#imagePreview').html(`<img src="${imageUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">`);
+            } else {
+                $('#imagePreview').html(`<i class="fas fa-user fa-2x text-white"></i>`);
+            }
+        });
+        
+        // Handle profile form submission
+        $('#saveProfileButton').click(function() {
+            const button = $(this);
+            setButtonLoading(button, true);
+            
+            // Reset any previous error states
+            $('#name, #email').removeClass('is-invalid');
+            $('#nameError, #emailError').text('');
+            
+            // Get form data
+            const name = $('#name').val().trim();
+            const email = $('#email').val().trim();
+            
+            // Simple validation
+            let isValid = true;
+            
+            if (!name) {
+                $('#name').addClass('is-invalid');
+                $('#nameError').text('Le nom est requis');
+                isValid = false;
+            }
+            
+            if (!email) {
+                $('#email').addClass('is-invalid');
+                $('#emailError').text('L\'email est requis');
+                isValid = false;
+            } else if (!email.match(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/)) {
+                $('#email').addClass('is-invalid');
+                $('#emailError').text('Veuillez entrer un email valide');
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                setButtonLoading(button, false);
+                return;
+            }
+            
+            // Send AJAX request to update profile
+            $.ajax({
+                url: '/api/update_profile',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ name, email }),
+                success: function(response) {
+                    showFeedback('profileFeedback', response.message, true);
+                    // Update sidebar user name if needed
+                    if (name !== '{{ user.name }}') {
+                        $('.profile-name').text(name);
+                    }
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || { message: 'Une erreur est survenue' };
+                    showFeedback('profileFeedback', response.message, false);
+                    
+                    // Handle specific validation errors
+                    if (xhr.responseJSON && xhr.responseJSON.field) {
+                        $(`#${xhr.responseJSON.field}`).addClass('is-invalid');
+                        $(`#${xhr.responseJSON.field}Error`).text(xhr.responseJSON.message);
+                    }
+                },
+                complete: function() {
+                    setButtonLoading(button, false);
+                }
+            });
+        });
+        
+        // Handle image update
+        $('#saveImageButton').click(function() {
+            const button = $(this);
+            setButtonLoading(button, true);
+            
+            const imageUrl = $('#imageUrl').val().trim();
+            
+            $.ajax({
+                url: '/api/update_image',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ imageUrl }),
+                success: function(response) {
+                    showFeedback('imageFeedback', response.message, true);
+                    
+                    // Update the profile image in the sidebar and main profile
+                    if (imageUrl) {
+                        $('.profile-image img').attr('src', imageUrl);
+                        $('#currentProfileImage').html(`<img src="${imageUrl}" alt="Profile" class="user-avatar">`);
+                    } else {
+                        $('.profile-image').html(`<div class="profile-placeholder"><i class="fas fa-user"></i></div>`);
+                        $('#currentProfileImage').html(`<i class="fas fa-user fa-3x text-white"></i>`);
+                    }
+                    
+                    // Close the modal after a short delay
+                    setTimeout(() => {
+                        $('#editProfileImageModal').modal('hide');
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || { message: 'Une erreur est survenue lors de la mise à jour de l\'image' };
+                    showFeedback('imageFeedback', response.message, false);
+                },
+                complete: function() {
+                    setButtonLoading(button, false);
+                }
+            });
+        });
+        
+        // Handle notifications form submission
+        $('#saveNotificationsButton').click(function() {
+            const button = $(this);
+            setButtonLoading(button, true);
+            
+            // Gather form data
+            const notificationsData = {
+                type: 'notifications',
+                emailNotifications: {
+                    taskAssigned: $('#emailTaskAssigned').is(':checked'),
+                    taskUpdate: $('#emailTaskUpdate').is(':checked'),
+                    projectUpdate: $('#emailProjectUpdate').is(':checked')
+                },
+                appNotifications: {
+                    taskAssigned: $('#appTaskAssigned').is(':checked'),
+                    taskUpdate: $('#appTaskUpdate').is(':checked'),
+                    projectUpdate: $('#appProjectUpdate').is(':checked'),
+                    dueDates: $('#appDueDates').is(':checked')
+                }
+            };
+            
+            $.ajax({
+                url: '/api/save_preferences',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(notificationsData),
+                success: function(response) {
+                    showFeedback('notificationsFeedback', response.message, true);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || { message: 'Une erreur est survenue' };
+                    showFeedback('notificationsFeedback', response.message, false);
+                },
+                complete: function() {
+                    setButtonLoading(button, false);
+                }
+            });
+        });
+        
+        // Handle appearance form submission
+        $('#saveAppearanceButton').click(function() {
+            const button = $(this);
+            setButtonLoading(button, true);
+            
+            const appearanceData = {
+                type: 'appearance',
+                theme: $('input[name="theme"]:checked').val()
+            };
+            
+            $.ajax({
+                url: '/api/save_preferences',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(appearanceData),
+                success: function(response) {
+                    showFeedback('appearanceFeedback', response.message, true);
+                    
+                    // Apply theme changes immediately
+                    const theme = appearanceData.theme;
+                    if (theme === 'dark') {
+                        $('body').addClass('dark-mode');
+                    } else if (theme === 'light') {
+                        $('body').removeClass('dark-mode');
+                    } else {
+                        // System theme would need more complex handling
+                        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        if (prefersDark) {
+                            $('body').addClass('dark-mode');
+                        } else {
+                            $('body').removeClass('dark-mode');
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || { message: 'Une erreur est survenue' };
+                    showFeedback('appearanceFeedback', response.message, false);
+                },
+                complete: function() {
+                    setButtonLoading(button, false);
+                }
+            });
+        });
+        
+        // Handle password change
+        $('#changePasswordButton').click(function() {
+            const button = $(this);
+            setButtonLoading(button, true);
+            
+            // Reset any previous error states
+            $('#currentPassword, #newPassword, #confirmPassword').removeClass('is-invalid');
+            $('#currentPasswordError, #newPasswordError, #confirmPasswordError').text('');
+            
+            // Get form data
+            const currentPassword = $('#currentPassword').val();
+            const newPassword = $('#newPassword').val();
+            const confirmPassword = $('#confirmPassword').val();
+            
+            // Simple validation
+            let isValid = true;
+            
+            if (!currentPassword) {
+                $('#currentPassword').addClass('is-invalid');
+                $('#currentPasswordError').text('Le mot de passe actuel est requis');
+                isValid = false;
+            }
+            
+            if (!newPassword) {
+                $('#newPassword').addClass('is-invalid');
+                $('#newPasswordError').text('Le nouveau mot de passe est requis');
+                isValid = false;
+            } else if (newPassword.length < 6) {
+                $('#newPassword').addClass('is-invalid');
+                $('#newPasswordError').text('Le mot de passe doit contenir au moins 6 caractères');
+                isValid = false;
+            }
+            
+            if (!confirmPassword) {
+                $('#confirmPassword').addClass('is-invalid');
+                $('#confirmPasswordError').text('Veuillez confirmer le nouveau mot de passe');
+                isValid = false;
+            } else if (confirmPassword !== newPassword) {
+                $('#confirmPassword').addClass('is-invalid');
+                $('#confirmPasswordError').text('Les mots de passe ne correspondent pas');
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                setButtonLoading(button, false);
+                return;
+            }
+            
+            $.ajax({
+                url: '/api/update_password',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+                success: function(response) {
+                    showFeedback('securityFeedback', response.message, true);
+                    
+                    // Reset form
+                    $('#securityForm')[0].reset();
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || { message: 'Une erreur est survenue' };
+                    showFeedback('securityFeedback', response.message, false);
+                    
+                    // Handle specific field errors
+                    if (response.field === 'currentPassword') {
+                        $('#currentPassword').addClass('is-invalid');
+                        $('#currentPasswordError').text(response.message);
+                    } else if (response.field === 'newPassword') {
+                        $('#newPassword').addClass('is-invalid');
+                        $('#newPasswordError').text(response.message);
+                    } else if (response.field === 'confirmPassword') {
+                        $('#confirmPassword').addClass('is-invalid');
+                        $('#confirmPasswordError').text(response.message);
+                    }
+                },
+                complete: function() {
+                    setButtonLoading(button, false);
+                }
+            });
+        });
+        
+        // Reset feedback messages when switching tabs
+        $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function() {
+            $('.feedback-message').hide();
+        });
+    });
+</script>
+{% endblock %}
