@@ -1,56 +1,62 @@
-{% extends "project.html" %}
+{% extends "base.html" %}
 
-{% block title %}Mashru3: {{ project.name }}{% endblock %}
+{% block title %}{{ project.name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid" style="padding-right: 0; margin-right: 0;">
+<div class="container-fluid">
     <h1 class="mt-4">{{ project.name }}</h1>
-    
-    <ul class="nav" id="projectTab" role="tablist" style="list-style-type: none; padding: 0; display: flex; justify-content: flex-start; margin-top: 20px;">
-        <li class="nav-item {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
-            <a class="nav-link" id="overview-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='overview') }}" role="tab" aria-controls="overview" aria-selected="true" style="position: relative;">Aperçu</a>
-            {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}
-                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
-            {% endif %}
+    <p class="text-muted">
+        <i class="fas fa-calendar-alt"></i> {{ project.start_date }} à {{ project.end_date }}
+    </p>
+    <p>{{ project.description }}</p>
+
+    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab" aria-controls="tasks" aria-selected="true">Tâches</button>
         </li>
-        <li class="nav-item {% if request.args.get('tab') == 'timeline' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
-            <a class="nav-link" id="timeline-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='timeline') }}" role="tab" aria-controls="timeline" aria-selected="false" style="position: relative;">Chronologie</a>
-            {% if request.args.get('tab') == 'timeline' %}
-                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
-            {% endif %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab" aria-controls="team" aria-selected="false">Équipe</button>
         </li>
-        <li class="nav-item {% if request.args.get('tab') == 'tasks' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
-            <a class="nav-link" id="tasks-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='tasks') }}" role="tab" aria-controls="tasks" aria-selected="false" style="position: relative;">Tâches</a>
-            {% if request.args.get('tab') == 'tasks' %}
-                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
-            {% endif %}
-        </li>
-        <li class="nav-item {% if request.args.get('tab') == 'team' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
-            <a class="nav-link" id="team-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='team') }}" role="tab" aria-controls="team" aria-selected="false" style="position: relative;">Équipe</a>
-            {% if request.args.get('tab') == 'team' %}
-                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
-            {% endif %}
-        </li>
-        <li class="nav-item {% if request.args.get('tab') == 'admin' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
-            <a class="nav-link" id="admin-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" role="tab" aria-controls="admin" aria-selected="false" style="position: relative;">Admin</a>
-            {% if request.args.get('tab') == 'admin' %}
-                <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
-            {% endif %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button" role="tab" aria-controls="admin" aria-selected="false">Administration</button>
         </li>
     </ul>
-    <hr style="margin-top: 0;">
-    <div class="tab-content" id="projectTabContent">
-        {% if request.args.get('tab') == 'overview' or not request.args.get('tab') %}
-            {% include 'project_overview.html' %}
-        {% elif request.args.get('tab') == 'timeline' %}
-            {% include 'project_timeline.html' %}
-        {% elif request.args.get('tab') == 'tasks' %}
-            {% include 'project_tasks.html' %}
-        {% elif request.args.get('tab') == 'team' %}
-            {% include 'project_team.html' %}
-        {% elif request.args.get('tab') == 'admin' %}
-            {% include 'project_admin.html' %}
-        {% endif %}
+    <div class="tab-content" id="projectTabsContent">
+        {% include 'project_tasks.html' %}
+        {% include 'project_team.html' %}
+        {% include 'project_admin.html' %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle Bootstrap 5 tabs properly
+        var triggerTabList = [].slice.call(document.querySelectorAll('#projectTabs button'))
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl)
+            
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault()
+                tabTrigger.show()
+            })
+        });
+        
+        // Initialize popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-toggle="popover"]'))
+        popoverTriggerList.forEach(function (popoverTriggerEl) {
+            new bootstrap.Popover(popoverTriggerEl)
+        });
+        
+        // Fix for older Bootstrap data attributes
+        $('[data-toggle="modal"]').click(function() {
+            var targetModal = $(this).data('target');
+            var bsModal = new bootstrap.Modal(document.querySelector(targetModal));
+            bsModal.show();
+        });
+    });
+    
+    // Convert any other event handlers from project_tasks.html and project_team.html
+</script>
 {% endblock %}
