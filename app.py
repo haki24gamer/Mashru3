@@ -429,6 +429,163 @@ def logout():
 def home():
     return redirect(url_for('dashboard'))
 
+@app.route('/parameters')
+def parameters():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    # Get user's projects and associated tasks
+    project_tasks = db.session.query(
+        Project.project_id,
+        Project.name.label('project_name'),
+        Task.task_id,
+        Task.title,
+        Task.status,
+        Task.priority,
+        Task.end_date
+    ).join(Participate, Project.project_id == Participate.project_id)\
+     .join(Task, Project.project_id == Task.project_id)\
+     .filter(Participate.user_id == user_id)\
+     .order_by(Project.name, Task.end_date)\
+     .all()
+    
+    # Organize data by projects for easier templating
+    projects_data = {}
+    for pt in project_tasks:
+        if pt.project_id not in projects_data:
+            projects_data[pt.project_id] = {
+                'name': pt.project_name,
+                'tasks': []
+            }
+        projects_data[pt.project_id]['tasks'].append({
+            'id': pt.task_id,
+            'title': pt.title,
+            'status': pt.status,
+            'priority': pt.priority,
+            'end_date': pt.end_date
+        })
+    
+    return render_template('parameters.html', 
+                          user=user,
+                          projects_data=projects_data)
+
+# Keep the old route as a redirect
+@app.route('/user/parameters')
+def user_parameters():
+    return redirect(url_for('parameters'))
+
+# New route for updating user profile via AJAX
+@app.route('/api/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return {'success': False, 'message': 'Non authentifié'}, 401
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
+    
+    data = request.json
+    
+    # Update user fields
+    if 'name' in data:
+        user.name = data['name']
+    if 'email' in data:
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user and existing_user.user_id != user_id:
+            return {'success': False, 'message': 'Cet email est déjà utilisé'}, 400
+        user.email = data['email']
+    
+    try:
+        db.session.commit()
+        return {'success': True, 'message': 'Profil mis à jour avec succès'}
+    except Exception as e:
+        db.session.rollback()
+        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
+
+# Route for updating user password
+@app.route('/api/update_password', methods=['POST'])
+def update_password():
+    if 'user_id' not in session:
+        return {'success': False, 'message': 'Non authentifié'}, 401
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
+    
+    data = request.json
+    current_password = data.get('currentPassword')
+    new_password = data.get('newPassword')
+    confirm_password = data.get('confirmPassword')
+    
+    # Validate inputs
+    if not current_password or not new_password or not confirm_password:
+        return {'success': False, 'message': 'Tous les champs sont requis'}, 400
+    
+    if not check_password_hash(user.password, current_password):
+        return {'success': False, 'message': 'Mot de passe actuel incorrect'}, 400
+    
+    if new_password != confirm_password:
+        return {'success': False, 'message': 'Les nouveaux mots de passe ne correspondent pas'}, 400
+    
+    # Update password
+    user.password = generate_password_hash(new_password)
+    
+    try:
+        db.session.commit()
+        return {'success': True, 'message': 'Mot de passe mis à jour avec succès'}
+    except Exception as e:
+        db.session.rollback()
+        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
+
+# Route for updating user image
+@app.route('/api/update_image', methods=['POST'])
+def update_image():
+    if 'user_id' not in session:
+        return {'success': False, 'message': 'Non authentifié'}, 401
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
+    
+    data = request.json
+    image_url = data.get('imageUrl')
+    
+    # Update user image
+    user.image = image_url
+    
+    try:
+        db.session.commit()
+        return {'success': True, 'message': 'Image mise à jour avec succès'}
+    except Exception as e:
+        db.session.rollback()
+        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
+
+# Route for saving user preferences
+@app.route('/api/save_preferences', methods=['POST'])
+def save_preferences():
+    if 'user_id' not in session:
+        return {'success': False, 'message': 'Non authentifié'}, 401
+    
+    # In a real implementation, you would save these preferences to a user_preferences table
+    # For now, we'll just acknowledge receipt of the data
+    data = request.json
+    preference_type = data.get('type')
+    
+    return {
+        'success': True, 
+        'message': f'Préférences de {preference_type} enregistrées avec succès',
+        'data': data
+    }
 
 if __name__ == '__main__':
     with app.app_context():

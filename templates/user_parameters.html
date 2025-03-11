@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres utilisateur{% endblock %}
+
+{% block styles %}
+<style>
+    .task-card {
+        border-left: 4px solid;
+        margin-bottom: 12px;
+    }
+    .priority-high { border-left-color: #dc3545; }
+    .priority-medium { border-left-color: #ffc107; }
+    .priority-low { border-left-color: #0d6efd; }
+    
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .project-section {
+        margin-bottom: 30px;
+    }
+    
+    .user-avatar {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">Paramètres utilisateur</h1>
+    <hr>
+    
+    <div class="row mt-4">
+        <!-- User Profile Section -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    {% if user.image %}
+                        <img src="{{ user.image }}" alt="{{ user.name }}" class="user-avatar mb-3">
+                    {% else %}
+                        <div class="user-avatar mb-3 d-flex align-items-center justify-content-center bg-secondary">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                    {% endif %}
+                    <h3>{{ user.name }}</h3>
+                    <p class="text-muted">{{ user.email }}</p>
+                    
+                    <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fas fa-edit me-1"></i> Modifier le profil
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Tasks Section -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-tasks me-2"></i> Mes tâches</h4>
+                </div>
+                <div class="card-body">
+                    {% if projects_data %}
+                        {% for project_id, project in projects_data.items() %}
+                            <div class="project-section">
+                                <h5 class="border-bottom pb-2 mb-3">
+                                    <i class="fas fa-project-diagram me-2"></i> 
+                                    {{ project.name }}
+                                </h5>
+                                
+                                {% if project.tasks %}
+                                    {% for task in project.tasks %}
+                                        <div class="task-card p-3 bg-light rounded priority-{{ task.priority }}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-1">{{ task.title }}</h6>
+                                                <div>
+                                                    {% if task.status == 'TODO' %}
+                                                        <span class="badge bg-secondary status-badge">À faire</span>
+                                                    {% elif task.status == 'IN_PROGRESS' %}
+                                                        <span class="badge bg-primary status-badge">En cours</span>
+                                                    {% elif task.status == 'REVIEW' %}
+                                                        <span class="badge bg-warning status-badge">Révision</span>
+                                                    {% elif task.status == 'DONE' %}
+                                                        <span class="badge bg-success status-badge">Terminée</span>
+                                                    {% endif %}
+                                                    
+                                                    {% if task.priority == 'high' %}
+                                                        <span class="badge bg-danger ms-1">Élevée</span>
+                                                    {% elif task.priority == 'medium' %}
+                                                        <span class="badge bg-warning ms-1">Moyenne</span>
+                                                    {% elif task.priority == 'low' %}
+                                                        <span class="badge bg-info ms-1">Basse</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% if task.end_date %}
+                                                <small class="text-muted">
+                                                    <i class="far fa-calendar-alt me-1"></i> Échéance: {{ task.end_date }}
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted fst-italic">Pas de tâches dans ce projet.</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-info-circle fa-3x mb-3 text-muted"></i>
+                            <p class="mb-0">Vous n'avez pas encore de tâches assignées.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProfileModalLabel">Modifier le profil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="profileForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nom</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label">URL de l'image de profil</label>
+                        <input type="text" class="form-control" id="image" name="image" value="{{ user.image or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Nouveau mot de passe (laisser vide pour conserver l'actuel)</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveProfile">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Handle profile form submission
+        $('#saveProfile').click(function() {
+            // Form validation and AJAX submission can be added here
+            alert('La mise à jour du profil sera implémentée ici');
+            $('#editProfileModal').modal('hide');
+        });
+    });
+</script>
+{% endblock %}

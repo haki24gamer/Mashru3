@@ -58,8 +58,8 @@
                 <i class="fas fa-users"></i> Équipe
             </a>
         </li>
-        <li>
-            <a href="#">
+        <li class="{% if request.path == '/parameters' %}active{% endif %}">
+            <a href="{{ url_for('parameters') }}">
                 <i class="fas fa-cog"></i> Paramètres
             </a>
         </li>
