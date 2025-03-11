@@ -332,6 +332,94 @@ def project_detail(project_id):
 
     return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 
+@app.route('/update_project/<int:project_id>', methods=['POST'])
+def update_project(project_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    
+    # Check if user is a participant in this project
+    participation = Participate.query.filter_by(
+        user_id=user_id,
+        project_id=project_id
+    ).first()
+    
+    if not participation or participation.role != 'Owner':
+        # Only project owners can edit project details
+        return "Unauthorized", 403
+    
+    project = Project.query.get_or_404(project_id)
+    
+    # Update project details
+    project.name = request.form['name']
+    project.description = request.form['description']
+    project.image = request.form['image']
+    
+    # Handle dates
+    if request.form['start_date']:
+        project.start_date = request.form['start_date']
+    else:
+        project.start_date = None
+        
+    if request.form['end_date']:
+        project.end_date = request.form['end_date']
+    else:
+        project.end_date = None
+    
+    # Handle project status
+    if request.form.get('status') == 'completed':
+        if 'finished_date' in request.form and request.form['finished_date']:
+            project.finished_date = request.form['finished_date']
+        else:
+            project.finished_date = date.today()
+    else:
+        project.finished_date = None
+    
+    db.session.commit()
+    return redirect(url_for('project_detail', project_id=project_id))
+
+@app.route('/delete_project/<int:project_id>', methods=['POST'])
+def delete_project(project_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    
+    # Check if user is the project owner
+    participation = Participate.query.filter_by(
+        user_id=user_id,
+        project_id=project_id,
+        role='Owner'
+    ).first()
+    
+    if not participation:
+        return "Unauthorized", 403
+    
+    project = Project.query.get_or_404(project_id)
+    
+    # Delete all tasks associated with the project
+    tasks = Task.query.filter_by(project_id=project_id).all()
+    for task in tasks:
+        # Delete task assignments
+        Assigned.query.filter_by(task_id=task.task_id).delete()
+        
+        # Delete task predecessors
+        Predecessor.query.filter_by(task_id=task.task_id).delete()
+        Predecessor.query.filter_by(predecessor_id=task.task_id).delete()
+        
+        # Delete the task
+        db.session.delete(task)
+    
+    # Delete all participations
+    Participate.query.filter_by(project_id=project_id).delete()
+    
+    # Delete the project
+    db.session.delete(project)
+    db.session.commit()
+    
+    return redirect(url_for('projects'))
+
 @app.route('/logout')
 def logout():
     session.clear()  # Session ends here
