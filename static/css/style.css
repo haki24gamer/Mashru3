@@ -1,0 +1,296 @@
+
+/* Main Layout */
+:root {
+    --primary-color: #4e73df;
+    --secondary-color: #1cc88a;
+    --dark-color: #5a5c69;
+    --light-color: #f8f9fc;
+    --danger-color: #e74a3b;
+    --warning-color: #f6c23e;
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 80px;
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f8f9fc;
+    overflow-x: hidden;
+}
+
+.wrapper {
+    display: flex;
+    width: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+    min-width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    background: linear-gradient(180deg, #4e73df 0%, #224abe 100%);
+    color: white;
+    transition: all 0.3s;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 999;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.sidebar.active {
+    min-width: var(--sidebar-collapsed-width);
+    max-width: var(--sidebar-collapsed-width);
+    text-align: center;
+}
+
+.sidebar .sidebar-header {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.sidebar.active .sidebar-header h3 {
+    display: none;
+}
+
+.sidebar.active .sidebar-header:after {
+    content: 'M3';
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.sidebar ul.components {
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar ul li {
+    position: relative;
+}
+
+.sidebar ul li a {
+    padding: 10px 20px;
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.sidebar ul li a:hover,
+.sidebar ul li.active > a {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid white;
+}
+
+.sidebar.active ul li a {
+    padding: 15px 10px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.sidebar.active ul li a i {
+    font-size: 1.2rem;
+    margin-right: 0;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.sidebar ul li a i {
+    margin-right: 10px;
+}
+
+.sidebar ul li ul.collapse {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar ul li ul.collapse li a {
+    padding-left: 40px;
+}
+
+.profile-section {
+    text-align: center;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-image {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 10px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-placeholder {
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+}
+
+.profile-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-footer a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.sidebar-footer a:hover {
+    color: white;
+}
+
+/* Content Area */
+#content {
+    width: calc(100% - var(--sidebar-width));
+    min-height: 100vh;
+    transition: all 0.3s;
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+#content.active {
+    width: calc(100% - var(--sidebar-collapsed-width));
+}
+
+.top-navbar {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    margin-bottom: 1.5rem;
+}
+
+.content-area {
+    padding: 0 1.5rem 1.5rem;
+}
+
+/* Dashboard specific styles */
+.dashboard-container {
+    padding: 20px;
+}
+
+.dashboard-title {
+    color: var(--dark-color);
+    font-weight: 700;
+}
+
+.dashboard-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.dashboard-card-header {
+    background-color: white;
+    border-bottom: 1px solid #eaecf4;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 0.75rem 1.25rem;
+}
+
+.dashboard-card-header h5 {
+    margin-bottom: 0;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.dashboard-stats-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.dashboard-stats-card:hover {
+    transform: translateY(-5px);
+}
+
+.stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.bg-success {
+    background-color: var(--secondary-color) !important;
+}
+
+.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.quote-card {
+    background-color: #f7f7f9;
+    border-left: 5px solid var(--primary-color);
+    padding: 20px;
+}
+
+.blockquote {
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .sidebar {
+        min-width: var(--sidebar-collapsed-width);
+        max-width: var(--sidebar-collapsed-width);
+    }
+    
+    .sidebar.active {
+        min-width: var(--sidebar-width);
+        max-width: var(--sidebar-width);
+    }
+    
+    #content {
+        width: calc(100% - var(--sidebar-collapsed-width));
+    }
+    
+    #content.active {
+        width: calc(100% - var(--sidebar-width));
+    }
+}

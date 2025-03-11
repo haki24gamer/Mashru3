@@ -3,35 +3,145 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="mt-4">Bienvenue, {{ user_first_name }}</h1>
+<div class="container-fluid dashboard-container">
+    <h1 class="mt-4 dashboard-title">Bienvenue, {{ user_first_name }}</h1>
     <hr>
     <div class="row mt-4">
         <div class="col-md-6 mb-4">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
+            <div class="card h-100 dashboard-card">
+                <div class="card-header dashboard-card-header">
+                    <h5 class="card-title">État des tâches</h5>
+                </div>
                 <div class="card-body">
-                    Pourcentage des tâches dans l'ensemble de vos projets actifs:
+                    <canvas id="taskStatusChart"></canvas>
                 </div>
             </div>
         </div>
         <div class="col-md-6 mb-4">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
+            <div class="card h-100 dashboard-card">
+                <div class="card-header dashboard-card-header">
+                    <h5 class="card-title">Activité par projet</h5>
+                </div>
                 <div class="card-body">
-                    Projets dans lesquels vous etes le plus actif:
+                    <canvas id="projectActivityChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
-    <hr>
+    
+    <div class="row mt-4">
+        <div class="col-md-4 mb-4">
+            <div class="card dashboard-stats-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-primary">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">Tâches totales</h6>
+                            <h2 class="mb-0">{{ total_tasks|default(0) }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card dashboard-stats-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">Tâches terminées</h6>
+                            <h2 class="mb-0">{{ completed_tasks|default(0) }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card dashboard-stats-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stats-icon bg-warning">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">Projets actifs</h6>
+                            <h2 class="mb-0">{{ active_projects|default(0) }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row mt-4">
         <div class="col-12">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
-                <div class="card-body">
-                    <center>"La seule façon de faire du bon travail est d'aimer ce que vous faites."
-                    <br><Strong>- Steve Jobs</Strong></center>
+            <div class="card dashboard-card">
+                <div class="card-body quote-card">
+                    <blockquote class="blockquote text-center mb-0">
+                        <p>"La seule façon de faire du bon travail est d'aimer ce que vous faites."</p>
+                        <footer class="blockquote-footer">Steve Jobs</footer>
+                    </blockquote>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Task Status Chart
+        const taskStatusCtx = document.getElementById('taskStatusChart').getContext('2d');
+        const taskStatusChart = new Chart(taskStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['À faire', 'En cours', 'En révision', 'Terminé'],
+                datasets: [{
+                    data: JSON.parse('{{ [todo_tasks|default(1), in_progress_tasks|default(1), review_tasks|default(1), done_tasks|default(1)]|tojson|safe }}'),
+                    backgroundColor: ['#FF6384', '#FFCE56', '#36A2EB', '#4BC0C0'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Project Activity Chart
+        const projectActivityCtx = document.getElementById('projectActivityChart').getContext('2d');
+        const projectActivityChart = new Chart(projectActivityCtx, {
+            type: 'bar',
+            data: {
+                labels: JSON.parse('{{ project_names|default(["Pas de données"])|tojson|safe }}'),
+                datasets: [{
+                    label: 'Tâches actives',
+                    data: JSON.parse('{{ project_tasks|default([0])|tojson|safe }}'),
+                    backgroundColor: '#4e73df',
+                    borderColor: '#4e73df',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
 {% endblock %}

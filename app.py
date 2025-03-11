@@ -90,6 +90,20 @@ with app.app_context():
     create_database()  # Ensure database exists
     db.create_all()    # Create tables if they don't exist
 
+@app.context_processor
+def inject_user():
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            return {
+                'user_first_name': user.name,
+                'user_image': user.image
+            }
+    return {
+        'user_first_name': None,
+        'user_image': None
+    }
+
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
     if request.method == 'POST':
@@ -148,9 +162,57 @@ def verify_otp():
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
-    user = User.query.get(session['user_id'])
-    return render_template('dashboard.html', user_first_name=user.name)
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    # Get user's projects
+    user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
+    active_projects = len(user_projects)
+    
+    # Get tasks statistics
+    tasks_query = db.session.query(Task).join(Project).join(Participate).filter(
+        Participate.user_id == user_id,
+        Participate.project_id == Project.project_id,
+        Task.project_id == Project.project_id
+    )
+    
+    total_tasks = tasks_query.count()
+    todo_tasks = tasks_query.filter(Task.status == 'TODO').count()
+    in_progress_tasks = tasks_query.filter(Task.status == 'IN_PROGRESS').count()
+    review_tasks = tasks_query.filter(Task.status == 'REVIEW').count()
+    done_tasks = tasks_query.filter(Task.status == 'DONE').count()
+    completed_tasks = done_tasks
+    
+    # Get project names and task counts for the chart
+    project_data = db.session.query(
+        Project.name, 
+        db.func.count(Task.task_id)
+    ).join(Task, Project.project_id == Task.project_id)\
+     .join(Participate, Project.project_id == Participate.project_id)\
+     .filter(Participate.user_id == user_id)\
+     .group_by(Project.name)\
+     .all()
+    
+    project_names = [p[0] for p in project_data] if project_data else []
+    project_tasks = [p[1] for p in project_data] if project_data else []
+    
+    return render_template(
+        'dashboard.html', 
+        user_first_name=user.name,
+        user_image=user.image,
+        total_tasks=total_tasks,
+        completed_tasks=completed_tasks,
+        active_projects=active_projects,
+        todo_tasks=todo_tasks,
+        in_progress_tasks=in_progress_tasks,
+        review_tasks=review_tasks,
+        done_tasks=done_tasks,
+        project_names=project_names,
+        project_tasks=project_tasks
+    )
 
+# Updated projects route to handle pagination correctly
 @app.route('/projects')
 def projects():
     if 'user_id' not in session:
@@ -158,7 +220,25 @@ def projects():
     user_id = session['user_id']
     user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
     total_projects = len(user_projects)
-    return render_template('project.html', projects=user_projects, total_projects=total_projects)
+    
+    # Add pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 8
+    offset = (page - 1) * per_page
+    
+    # Paginate projects
+    paginated_projects = user_projects[offset:offset+per_page]
+    
+    # Calculate next and prev urls
+    next_url = url_for('projects', page=page + 1) if offset + per_page < total_projects else None
+    prev_url = url_for('projects', page=page - 1) if page > 1 else None
+    
+    return render_template('project.html', 
+                          projects=paginated_projects, 
+                          total_projects=total_projects,
+                          current_page=page,
+                          next_url=next_url,
+                          prev_url=prev_url)
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
@@ -260,6 +340,7 @@ def logout():
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))
+
 
 if __name__ == '__main__':
     with app.app_context():
