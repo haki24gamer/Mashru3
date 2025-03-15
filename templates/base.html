@@ -11,19 +11,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .sidebar h2 {
-            margin-bottom: 25px;
-            padding-bottom: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
             border-bottom: 1px solid #e9ecef;
+            font-size: 1.4rem;
         }
         .sidebar ul li {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .sidebar ul li a {
-            padding: 12px 15px;
+            padding: 10px 12px;
             border-radius: 8px;
             text-decoration: none;
             transition: all 0.3s ease;
-            font-size: 16px;
+            font-size: 14px;
             display: block;
         }
         .sidebar ul li a:hover {
@@ -38,15 +39,60 @@
             background-color: #dee2e6;
         }
         .sidebar i {
-            margin-right: 10px;
-            font-size: 20px;
+            margin-right: 8px;
+            font-size: 18px;
+        }
+        /* User profile styling in sidebar */
+        .sidebar-user-profile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .profile-image {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 8px;
+        }
+        .user-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-top: 3px;
+            text-align: center;
+        }
+        .default-profile {
+            background-color: #6c757d;
+            color: white;
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
     <div class="d-flex" style="min-height: 100vh;">
-        <div class="sidebar bg-white text-dark p-4 d-flex flex-column" style="position: fixed; top: 0; left: 0; height: 100vh; width: 250px; overflow-y: auto; z-index: 1000;">
+        <div class="sidebar bg-white text-dark p-3 d-flex flex-column" style="position: fixed; top: 0; left: 0; height: 100vh; width: 220px; overflow-y: auto; z-index: 1000;">
             <h2 class="text-center">Mashru3</h2>
+            
+            <!-- User Profile Section -->
+            <div class="sidebar-user-profile">
+                {% if user_image %}
+                    <img src="{{ user_image }}" alt="{{ user_first_name }}" class="profile-image">
+                {% else %}
+                    <div class="profile-image default-profile">
+                        <i class="material-icons-outlined">person</i>
+                    </div>
+                {% endif %}
+                <div class="user-name">{{ user_first_name or 'Guest' }}</div>
+            </div>
+            
             <ul class="list-unstyled flex-grow-1">
                 <li class="{% if request.endpoint == 'dashboard' %}active{% endif %}"><a href="{{ url_for('dashboard') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">home</i> Page d’accueil</a></li>
                 <li class="{% if request.endpoint == 'projects' %}active{% endif %}"><a href="{{ url_for('projects') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">folder</i> Mes Projets</a></li>
@@ -56,7 +102,7 @@
                 <li class="{% if request.endpoint == 'parametre' %}active{% endif %}"><a href="{{ url_for('parametre') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">settings</i> Parametre</a></li>
             </ul>
         </div>
-        <div class="content flex-grow-1 p-3" style="margin-left: 250px;">
+        <div class="content flex-grow-1 p-3" style="margin-left: 220px;">
             {% block content %}
             <!-- Content goes here -->
             {% endblock %}
