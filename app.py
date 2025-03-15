@@ -5,6 +5,7 @@ from datetime import date
 import mysql.connector
 from email.message import EmailMessage
 from flask_mail import Mail, Message
+import random
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
@@ -15,7 +16,7 @@ db = SQLAlchemy(app)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
 app.config['MAIL_PORT'] = 587  # Port for TLS
 app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'  # Replace with your Gmail address
-app.config['MAIL_PASSWORD'] = ''  # Replace with your app password (not your Gmail password)
+app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '  # Replace with your app password (not your Gmail password)
 app.config['MAIL_USE_TLS'] = True  # Use TLS
 app.config['MAIL_USE_SSL'] = False  # Don't use SSL
 mail = Mail(app)
@@ -89,20 +90,6 @@ with app.app_context():
     create_database()  # Ensure database exists
     db.create_all()    # Create tables if they don't exist
 
-@app.context_processor
-def inject_user():
-    if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        if user:
-            return {
-                'user_first_name': user.name,
-                'user_image': user.image
-            }
-    return {
-        'user_first_name': None,
-        'user_image': None
-    }
-
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
     if request.method == 'POST':
@@ -110,7 +97,7 @@ def connexion():
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            session['user_id'] = user.user_id  # Session starts here
+            session['user_id'] = user.user_id
             return redirect(url_for('dashboard'))
         else:
             return "Invalid credentials"
@@ -122,67 +109,48 @@ def inscription():
         name = request.form['name']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
-        new_user = User(name=name, email=email, password=password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('connexion'))
+        
+        # Generate OTP and store registration data in session
+        otp = str(random.randint(100000, 999999))
+        session['registration_data'] = {'name': name, 'email': email, 'password': password}
+        session['otp'] = otp
+        
+        # Send OTP to user's email
+        msg = Message('OTP Verification', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.body = f'Your OTP is: {otp}'
+        mail.send(msg)
+        
+        return redirect(url_for('verify_otp'))
     return render_template('inscription.html')
+
+@app.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
+    # Redirect if no registration data present
+    if 'registration_data' not in session or 'otp' not in session:
+        return redirect(url_for('inscription'))
+    error = None
+    if request.method == 'POST':
+        if request.form['otp'] == session['otp']:
+            data = session['registration_data']
+            # Create the user in the database
+            new_user = User(name=data['name'], email=data['email'], password=data['password'])
+            db.session.add(new_user)
+            db.session.commit()
+            # Clear registration data from session
+            session.pop('registration_data', None)
+            session.pop('otp', None)
+            return redirect(url_for('connexion'))
+        else:
+            error = 'Invalid OTP'
+    return render_template('verify_otp.html', error=error)
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    # Get user's projects
-    user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
-    active_projects = len(user_projects)
-    
-    # Get tasks statistics
-    tasks_query = db.session.query(Task).join(Project).join(Participate).filter(
-        Participate.user_id == user_id,
-        Participate.project_id == Project.project_id,
-        Task.project_id == Project.project_id
-    )
-    
-    total_tasks = tasks_query.count()
-    todo_tasks = tasks_query.filter(Task.status == 'TODO').count()
-    in_progress_tasks = tasks_query.filter(Task.status == 'IN_PROGRESS').count()
-    review_tasks = tasks_query.filter(Task.status == 'REVIEW').count()
-    done_tasks = tasks_query.filter(Task.status == 'DONE').count()
-    completed_tasks = done_tasks
-    
-    # Get project names and task counts for the chart
-    project_data = db.session.query(
-        Project.name, 
-        db.func.count(Task.task_id)
-    ).join(Task, Project.project_id == Task.project_id)\
-     .join(Participate, Project.project_id == Participate.project_id)\
-     .filter(Participate.user_id == user_id)\
-     .group_by(Project.name)\
-     .all()
-    
-    project_names = [p[0] for p in project_data] if project_data else []
-    project_tasks = [p[1] for p in project_data] if project_data else []
-    
-    return render_template(
-        'dashboard.html', 
-        user_first_name=user.name,
-        user_image=user.image,
-        total_tasks=total_tasks,
-        completed_tasks=completed_tasks,
-        active_projects=active_projects,
-        todo_tasks=todo_tasks,
-        in_progress_tasks=in_progress_tasks,
-        review_tasks=review_tasks,
-        done_tasks=done_tasks,
-        project_names=project_names,
-        project_tasks=project_tasks
-    )
+    user = User.query.get(session['user_id'])
+    return render_template('dashboard.html', user_first_name=user.name)
 
-# Updated projects route to handle pagination correctly
 @app.route('/projects')
 def projects():
     if 'user_id' not in session:
@@ -190,25 +158,7 @@ def projects():
     user_id = session['user_id']
     user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
     total_projects = len(user_projects)
-    
-    # Add pagination parameters
-    page = request.args.get('page', 1, type=int)
-    per_page = 8
-    offset = (page - 1) * per_page
-    
-    # Paginate projects
-    paginated_projects = user_projects[offset:offset+per_page]
-    
-    # Calculate next and prev urls
-    next_url = url_for('projects', page=page + 1) if offset + per_page < total_projects else None
-    prev_url = url_for('projects', page=page - 1) if page > 1 else None
-    
-    return render_template('project.html', 
-                          projects=paginated_projects, 
-                          total_projects=total_projects,
-                          current_page=page,
-                          next_url=next_url,
-                          prev_url=prev_url)
+    return render_template('project.html', projects=user_projects, total_projects=total_projects)
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
@@ -302,260 +252,9 @@ def project_detail(project_id):
 
     return render_template('project_detail.html', project=project, participants=participants, tasks=tasks)
 
-@app.route('/update_project/<int:project_id>', methods=['POST'])
-def update_project(project_id):
-    if 'user_id' not in session:
-        return redirect(url_for('connexion'))
-    
-    user_id = session['user_id']
-    
-    # Check if user is a participant in this project
-    participation = Participate.query.filter_by(
-        user_id=user_id,
-        project_id=project_id
-    ).first()
-    
-    if not participation or participation.role != 'Owner':
-        # Only project owners can edit project details
-        return "Unauthorized", 403
-    
-    project = Project.query.get_or_404(project_id)
-    
-    # Update project details
-    project.name = request.form['name']
-    project.description = request.form['description']
-    project.image = request.form['image']
-    
-    # Handle dates
-    if request.form['start_date']:
-        project.start_date = request.form['start_date']
-    else:
-        project.start_date = None
-        
-    if request.form['end_date']:
-        project.end_date = request.form['end_date']
-    else:
-        project.end_date = None
-    
-    # Handle project status
-    if request.form.get('status') == 'completed':
-        if 'finished_date' in request.form and request.form['finished_date']:
-            project.finished_date = request.form['finished_date']
-        else:
-            project.finished_date = date.today()
-    else:
-        project.finished_date = None
-    
-    db.session.commit()
-    return redirect(url_for('project_detail', project_id=project_id))
-
-@app.route('/delete_project/<int:project_id>', methods=['POST'])
-def delete_project(project_id):
-    if 'user_id' not in session:
-        return redirect(url_for('connexion'))
-    
-    user_id = session['user_id']
-    
-    # Check if user is the project owner
-    participation = Participate.query.filter_by(
-        user_id=user_id,
-        project_id=project_id,
-        role='Owner'
-    ).first()
-    
-    if not participation:
-        return "Unauthorized", 403
-    
-    project = Project.query.get_or_404(project_id)
-    
-    # Delete all tasks associated with the project
-    tasks = Task.query.filter_by(project_id=project_id).all()
-    for task in tasks:
-        # Delete task assignments
-        Assigned.query.filter_by(task_id=task.task_id).delete()
-        
-        # Delete task predecessors
-        Predecessor.query.filter_by(task_id=task.task_id).delete()
-        Predecessor.query.filter_by(predecessor_id=task.task_id).delete()
-        
-        # Delete the task
-        db.session.delete(task)
-    
-    # Delete all participations
-    Participate.query.filter_by(project_id=project_id).delete()
-    
-    # Delete the project
-    db.session.delete(project)
-    db.session.commit()
-    
-    return redirect(url_for('projects'))
-
-@app.route('/logout')
-def logout():
-    session.clear()  # Session ends here
-    return redirect(url_for('connexion'))
-
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))
-
-@app.route('/parameters')
-def parameters():
-    if 'user_id' not in session:
-        return redirect(url_for('connexion'))
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    # Get user's projects and associated tasks
-    project_tasks = db.session.query(
-        Project.project_id,
-        Project.name.label('project_name'),
-        Task.task_id,
-        Task.title,
-        Task.status,
-        Task.priority,
-        Task.end_date
-    ).join(Participate, Project.project_id == Participate.project_id)\
-     .join(Task, Project.project_id == Task.project_id)\
-     .filter(Participate.user_id == user_id)\
-     .order_by(Project.name, Task.end_date)\
-     .all()
-    
-    # Organize data by projects for easier templating
-    projects_data = {}
-    for pt in project_tasks:
-        if pt.project_id not in projects_data:
-            projects_data[pt.project_id] = {
-                'name': pt.project_name,
-                'tasks': []
-            }
-        projects_data[pt.project_id]['tasks'].append({
-            'id': pt.task_id,
-            'title': pt.title,
-            'status': pt.status,
-            'priority': pt.priority,
-            'end_date': pt.end_date
-        })
-    
-    return render_template('parameters.html', 
-                          user=user,
-                          projects_data=projects_data)
-
-# Keep the old route as a redirect
-@app.route('/user/parameters')
-def user_parameters():
-    return redirect(url_for('parameters'))
-
-# New route for updating user profile via AJAX
-@app.route('/api/update_profile', methods=['POST'])
-def update_profile():
-    if 'user_id' not in session:
-        return {'success': False, 'message': 'Non authentifié'}, 401
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
-    
-    data = request.json
-    
-    # Update user fields
-    if 'name' in data:
-        user.name = data['name']
-    if 'email' in data:
-        # Check if email already exists
-        existing_user = User.query.filter_by(email=data['email']).first()
-        if existing_user and existing_user.user_id != user_id:
-            return {'success': False, 'message': 'Cet email est déjà utilisé'}, 400
-        user.email = data['email']
-    
-    try:
-        db.session.commit()
-        return {'success': True, 'message': 'Profil mis à jour avec succès'}
-    except Exception as e:
-        db.session.rollback()
-        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
-
-# Route for updating user password
-@app.route('/api/update_password', methods=['POST'])
-def update_password():
-    if 'user_id' not in session:
-        return {'success': False, 'message': 'Non authentifié'}, 401
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
-    
-    data = request.json
-    current_password = data.get('currentPassword')
-    new_password = data.get('newPassword')
-    confirm_password = data.get('confirmPassword')
-    
-    # Validate inputs
-    if not current_password or not new_password or not confirm_password:
-        return {'success': False, 'message': 'Tous les champs sont requis'}, 400
-    
-    if not check_password_hash(user.password, current_password):
-        return {'success': False, 'message': 'Mot de passe actuel incorrect'}, 400
-    
-    if new_password != confirm_password:
-        return {'success': False, 'message': 'Les nouveaux mots de passe ne correspondent pas'}, 400
-    
-    # Update password
-    user.password = generate_password_hash(new_password)
-    
-    try:
-        db.session.commit()
-        return {'success': True, 'message': 'Mot de passe mis à jour avec succès'}
-    except Exception as e:
-        db.session.rollback()
-        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
-
-# Route for updating user image
-@app.route('/api/update_image', methods=['POST'])
-def update_image():
-    if 'user_id' not in session:
-        return {'success': False, 'message': 'Non authentifié'}, 401
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        return {'success': False, 'message': 'Utilisateur non trouvé'}, 404
-    
-    data = request.json
-    image_url = data.get('imageUrl')
-    
-    # Update user image
-    user.image = image_url
-    
-    try:
-        db.session.commit()
-        return {'success': True, 'message': 'Image mise à jour avec succès'}
-    except Exception as e:
-        db.session.rollback()
-        return {'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}, 500
-
-# Route for saving user preferences
-@app.route('/api/save_preferences', methods=['POST'])
-def save_preferences():
-    if 'user_id' not in session:
-        return {'success': False, 'message': 'Non authentifié'}, 401
-    
-    # In a real implementation, you would save these preferences to a user_preferences table
-    # For now, we'll just acknowledge receipt of the data
-    data = request.json
-    preference_type = data.get('type')
-    
-    return {
-        'success': True, 
-        'message': f'Préférences de {preference_type} enregistrées avec succès',
-        'data': data
-    }
 
 if __name__ == '__main__':
     with app.app_context():
