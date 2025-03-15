@@ -144,6 +144,20 @@ def verify_otp():
             error = 'Invalid OTP'
     return render_template('verify_otp.html', error=error)
 
+# Collection of collaboration and teamwork quotes
+COLLABORATION_QUOTES = [
+    {"text": "La seule façon de faire du bon travail est d'aimer ce que vous faites.", "author": "Steve Jobs"},
+    {"text": "Seul on va plus vite, ensemble on va plus loin.", "author": "Proverbe africain"},
+    {"text": "Le talent gagne des matchs, mais le travail d'équipe gagne des championnats.", "author": "Michael Jordan"},
+    {"text": "Si vous voulez aller vite, allez-y seul. Si vous voulez aller loin, allez-y ensemble.", "author": "Proverbe africain"},
+    {"text": "Aucun de nous n'est aussi intelligent que nous tous ensemble.", "author": "Ken Blanchard"},
+    {"text": "La force du loup est dans la meute, et la force de la meute est dans le loup.", "author": "Rudyard Kipling"},
+    {"text": "Se réunir est un début, rester ensemble est un progrès, travailler ensemble est la réussite.", "author": "Henry Ford"},
+    {"text": "La collaboration est la multiplication des forces.", "author": "Andrew Carnegie"},
+    {"text": "L'unité est la diversité, et la diversité est l'unité.", "author": "Mary Parker Follett"},
+    {"text": "La créativité s'épanouit lorsque nous travaillons ensemble.", "author": "Français Johansson"}
+]
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -151,6 +165,9 @@ def dashboard():
     
     user_id = session['user_id']
     user = User.query.get(user_id)
+    
+    # Select a random quote
+    random_quote = random.choice(COLLABORATION_QUOTES)
     
     # Get user's projects
     user_projects = db.session.query(Project).join(Participate).filter(
@@ -243,7 +260,8 @@ def dashboard():
         completion_percentage=completion_percentage,
         active_projects=active_projects,
         recent_tasks=recent_tasks,
-        priority_stats=priority_stats
+        priority_stats=priority_stats,
+        quote=random_quote  # Pass the random quote to the template
     )
 
 @app.route('/projects')

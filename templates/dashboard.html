@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <h1 class="mt-4">Bienvenue, {{ user_first_name }}</h1>
     
-    <!-- Steve Jobs quote with improved styling -->
+    <!-- Random quote with improved styling -->
     <div class="row mt-2 mb-4">
         <div class="col-12">
             <div class="card shadow" style="border-radius: 10px; border-left: 4px solid #4e73df;">
@@ -15,9 +15,9 @@
                         <div class="quote-container" style="max-width: 600px;">
                             <i class="material-icons-outlined" style="color: #4e73df; font-size: 24px; margin-bottom: 10px;">format_quote</i>
                             <p class="mb-2" style="font-size: 1.2rem; font-style: italic; color: #5a5c69; line-height: 1.6;">
-                                "La seule façon de faire du bon travail est d'aimer ce que vous faites."
+                                "{{ quote.text }}"
                             </p>
-                            <p class="text-right mb-0" style="font-weight: 600; color: #4e73df;">- Steve Jobs</p>
+                            <p class="text-right mb-0" style="font-weight: 600; color: #4e73df;">- {{ quote.author }}</p>
                         </div>
                     </div>
                 </div>
