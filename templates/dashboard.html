@@ -5,27 +5,191 @@
 {% block content %}
 <div class="container-fluid">
     <h1 class="mt-4">Bienvenue, {{ user_first_name }}</h1>
-    <hr>
-    <div class="row mt-4">
-        <div class="col-md-6 mb-4">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
+    <div class="row mt-3">
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-left-primary shadow py-2" style="border-left: 4px solid #4e73df; border-radius: 10px;">
                 <div class="card-body">
-                    Pourcentage des tâches dans l'ensemble de vos projets actifs:
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Projets Actifs</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">folder</i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 mb-4">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-left-success shadow py-2" style="border-left: 4px solid #1cc88a; border-radius: 10px;">
                 <div class="card-body">
-                    Projets dans lesquels vous etes le plus actif:
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Tâches Terminées</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ task_stats.DONE }} / {{ task_stats.TODO + task_stats.IN_PROGRESS + task_stats.REVIEW + task_stats.DONE }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">check_circle</i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-left-info shadow py-2" style="border-left: 4px solid #36b9cc; border-radius: 10px;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Taux d'Achèvement</div>
+                            <div class="row no-gutters align-items-center">
+                                <div class="col-auto">
+                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ completion_percentage }}%</div>
+                                </div>
+                                <div class="col">
+                                    <div class="progress progress-sm mr-2">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ completion_percentage }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">trending_up</i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card h-100 border-left-warning shadow py-2" style="border-left: 4px solid #f6c23e; border-radius: 10px;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Tâches Prioritaires</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ priority_stats.high }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">priority_high</i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <hr>
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100" style="border-radius: 10px;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
+                    <h6 class="m-0 font-weight-bold text-primary">Répartition des Tâches</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:250px;">
+                        <canvas id="taskStatusChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                    Mise à jour aujourd'hui
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100" style="border-radius: 10px;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
+                    <h6 class="m-0 font-weight-bold text-primary">Projets les Plus Actifs</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:250px;">
+                        <canvas id="projectActivityChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                    Basé sur le nombre de tâches
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100" style="border-radius: 10px;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
+                    <h6 class="m-0 font-weight-bold text-primary">Répartition par Priorité</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:250px;">
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                    Distribution des tâches par niveau de priorité
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100" style="border-radius: 10px;">
+                <div class="card-header py-3" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
+                    <h6 class="m-0 font-weight-bold text-primary">Tâches Récentes</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Priorité</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in recent_tasks %}
+                                <tr>
+                                    <td>{{ task.title }}</td>
+                                    <td>
+                                        {% if task.priority == 'high' %}
+                                            <span class="badge bg-danger">Haute</span>
+                                        {% elif task.priority == 'medium' %}
+                                            <span class="badge bg-warning">Moyenne</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Basse</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if task.status == 'DONE' %}
+                                            <span class="badge bg-success">Terminée</span>
+                                        {% elif task.status == 'IN_PROGRESS' %}
+                                            <span class="badge bg-primary">En cours</span>
+                                        {% elif task.status == 'REVIEW' %}
+                                            <span class="badge bg-info">En révision</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">À faire</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center">Aucune tâche récente</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                    Tâches récemment assignées
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mt-4">
         <div class="col-12">
-            <div class="card h-100" style="background-color: #f0f8ff; border-radius: 10px;">
+            <div class="card shadow" style="border-radius: 10px;">
                 <div class="card-body">
                     <center>"La seule façon de faire du bon travail est d'aimer ce que vous faites."
                     <br><Strong>- Steve Jobs</Strong></center>
@@ -34,4 +198,98 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Task Status Chart
+    var ctxTaskStatus = document.getElementById('taskStatusChart').getContext('2d');
+    var taskStatusChart = new Chart(ctxTaskStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['À faire', 'En cours', 'En révision', 'Terminées'],
+            datasets: [{
+                data: [{{ task_stats.TODO }}, {{ task_stats.IN_PROGRESS }}, {{ task_stats.REVIEW }}, {{ task_stats.DONE }}],
+                backgroundColor: ['#e74a3b', '#4e73df', '#36b9cc', '#1cc88a'],
+                hoverBackgroundColor: ['#be3c2e', '#3a57ad', '#2a909e', '#17a673'],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            cutout: '70%',
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem, data) {
+                        return data.labels[tooltipItem.index] + ': ' + data.datasets[0].data[tooltipItem.index];
+                    }
+                }
+            }
+        }
+    });
+
+    // Project Activity Chart
+    var ctxProjectActivity = document.getElementById('projectActivityChart').getContext('2d');
+    var projectLabels = [{% for project in active_projects %}'{{ project.name }}',{% endfor %}];
+    var projectData = [{% for project in active_projects %}{{ project.task_count }},{% endfor %}];
+    
+    var projectActivityChart = new Chart(ctxProjectActivity, {
+        type: 'bar',
+        data: {
+            labels: projectLabels,
+            datasets: [{
+                label: 'Nombre de tâches',
+                data: projectData,
+                backgroundColor: '#4e73df',
+                borderColor: '#4e73df',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+
+    // Priority Chart
+    var ctxPriority = document.getElementById('priorityChart').getContext('2d');
+    var priorityChart = new Chart(ctxPriority, {
+        type: 'pie',
+        data: {
+            labels: ['Basse', 'Moyenne', 'Haute'],
+            datasets: [{
+                data: [{{ priority_stats.low }}, {{ priority_stats.medium }}, {{ priority_stats.high }}],
+                backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'],
+                hoverBackgroundColor: ['#17a673', '#dda20a', '#be3c2e'],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                displayColors: false,
+                caretPadding: 10,
+            }
+        }
+    });
+</script>
 {% endblock %}

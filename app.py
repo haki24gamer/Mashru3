@@ -148,8 +148,103 @@ def verify_otp():
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
-    user = User.query.get(session['user_id'])
-    return render_template('dashboard.html', user_first_name=user.name)
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    # Get user's projects
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    
+    # Count total projects
+    total_projects = len(user_projects)
+    
+    # Get task IDs assigned to this user
+    assigned_task_ids_query = db.session.query(Assigned.task_id).filter(
+        Assigned.user_id == user_id
+    )
+    
+    # Task statistics - counts by status for tasks assigned to the user
+    task_stats = {
+        'TODO': 0,
+        'IN_PROGRESS': 0,
+        'REVIEW': 0,
+        'DONE': 0
+    }
+    
+    task_counts = db.session.query(
+        Task.status, db.func.count(Task.task_id)
+    ).filter(
+        Task.task_id.in_(assigned_task_ids_query)
+    ).group_by(Task.status).all()
+    
+    # Update with actual counts
+    for status, count in task_counts:
+        task_stats[status] = count
+    
+    # Calculate task percentage completion
+    total_tasks = sum(task_stats.values()) or 1  # Avoid division by zero
+    completion_percentage = round((task_stats['DONE'] / total_tasks) * 100, 1)
+    
+    # Get most active projects (based on tasks assigned to the user)
+    active_projects = []
+    project_activity = db.session.query(
+        Project.project_id,
+        Project.name,
+        db.func.count(Task.task_id).label('task_count')
+    ).join(
+        Task, Task.project_id == Project.project_id
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).group_by(
+        Project.project_id, Project.name
+    ).order_by(
+        db.desc('task_count')
+    ).limit(5).all()
+    
+    active_projects = [
+        {'name': p.name, 'task_count': p.task_count}
+        for p in project_activity
+    ]
+    
+    # Get recent tasks assigned to user (already correct)
+    recent_tasks = db.session.query(
+        Task
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).order_by(
+        Task.created_at.desc()
+    ).limit(5).all()
+    
+    # Get tasks by priority for tasks assigned to the user
+    priority_stats = {'low': 0, 'medium': 0, 'high': 0}
+    
+    priority_counts = db.session.query(
+        Task.priority, db.func.count(Task.task_id)
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).group_by(Task.priority).all()
+    
+    for priority, count in priority_counts:
+        priority_stats[priority] = count
+    
+    return render_template(
+        'dashboard.html',
+        user_first_name=user.name,
+        total_projects=total_projects,
+        task_stats=task_stats,
+        completion_percentage=completion_percentage,
+        active_projects=active_projects,
+        recent_tasks=recent_tasks,
+        priority_stats=priority_stats
+    )
 
 @app.route('/projects')
 def projects():
