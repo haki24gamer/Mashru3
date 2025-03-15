@@ -668,6 +668,56 @@ def delete_project(project_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/parametre', methods=['GET', 'POST'])
+def parametre():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    success_message = None
+    error_message = None
+    
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        
+        if action == 'update_info':
+            # Update basic info
+            user.name = request.form.get('name', user.name)
+            
+            # Check if email is being changed and if it's not already taken
+            new_email = request.form.get('email')
+            if new_email != user.email:
+                existing_user = User.query.filter_by(email=new_email).first()
+                if existing_user:
+                    error_message = "Cet e-mail est déjà utilisé par un autre compte."
+                else:
+                    user.email = new_email
+            
+            if not error_message:
+                db.session.commit()
+                success_message = "Vos informations ont été mises à jour avec succès."
+        
+        elif action == 'update_password':
+            # Update password
+            current_password = request.form.get('current_password', '')
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            # Verify current password
+            if not check_password_hash(user.password, current_password):
+                error_message = "Le mot de passe actuel est incorrect."
+            elif new_password != confirm_password:
+                error_message = "Le nouveau mot de passe et sa confirmation ne correspondent pas."
+            elif not new_password:
+                error_message = "Le nouveau mot de passe ne peut pas être vide."
+            else:
+                user.password = generate_password_hash(new_password)
+                db.session.commit()
+                success_message = "Votre mot de passe a été mis à jour avec succès."
+    
+    return render_template('parametre.html', user=user, success_message=success_message, error_message=error_message)
+
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))

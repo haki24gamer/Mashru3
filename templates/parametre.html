@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Paramètres du compte{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Paramètres du compte</h1>
+    
+    {% if success_message %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ success_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    {% if error_message %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ error_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Informations personnelles</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('parametre') }}">
+                        <input type="hidden" name="action" value="update_info">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nom</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Adresse e-mail</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5>Modifier le mot de passe</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('parametre') }}">
+                        <input type="hidden" name="action" value="update_password">
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Mot de passe actuel</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">Nouveau mot de passe</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirmer le nouveau mot de passe</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Changer le mot de passe</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
