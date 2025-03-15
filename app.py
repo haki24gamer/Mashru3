@@ -144,12 +144,125 @@ def verify_otp():
             error = 'Invalid OTP'
     return render_template('verify_otp.html', error=error)
 
+# Collection of collaboration and teamwork quotes
+COLLABORATION_QUOTES = [
+    {"text": "La seule façon de faire du bon travail est d'aimer ce que vous faites.", "author": "Steve Jobs"},
+    {"text": "Seul on va plus vite, ensemble on va plus loin.", "author": "Proverbe africain"},
+    {"text": "Le talent gagne des matchs, mais le travail d'équipe gagne des championnats.", "author": "Michael Jordan"},
+    {"text": "Si vous voulez aller vite, allez-y seul. Si vous voulez aller loin, allez-y ensemble.", "author": "Proverbe africain"},
+    {"text": "Aucun de nous n'est aussi intelligent que nous tous ensemble.", "author": "Ken Blanchard"},
+    {"text": "La force du loup est dans la meute, et la force de la meute est dans le loup.", "author": "Rudyard Kipling"},
+    {"text": "Se réunir est un début, rester ensemble est un progrès, travailler ensemble est la réussite.", "author": "Henry Ford"},
+    {"text": "La collaboration est la multiplication des forces.", "author": "Andrew Carnegie"},
+    {"text": "L'unité est la diversité, et la diversité est l'unité.", "author": "Mary Parker Follett"},
+    {"text": "La créativité s'épanouit lorsque nous travaillons ensemble.", "author": "Français Johansson"}
+]
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
-    user = User.query.get(session['user_id'])
-    return render_template('dashboard.html', user_first_name=user.name)
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    # Select a random quote
+    random_quote = random.choice(COLLABORATION_QUOTES)
+    
+    # Get user's projects
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    
+    # Count total projects
+    total_projects = len(user_projects)
+    
+    # Get task IDs assigned to this user
+    assigned_task_ids_query = db.session.query(Assigned.task_id).filter(
+        Assigned.user_id == user_id
+    )
+    
+    # Task statistics - counts by status for tasks assigned to the user
+    task_stats = {
+        'TODO': 0,
+        'IN_PROGRESS': 0,
+        'REVIEW': 0,
+        'DONE': 0
+    }
+    
+    task_counts = db.session.query(
+        Task.status, db.func.count(Task.task_id)
+    ).filter(
+        Task.task_id.in_(assigned_task_ids_query)
+    ).group_by(Task.status).all()
+    
+    # Update with actual counts
+    for status, count in task_counts:
+        task_stats[status] = count
+    
+    # Calculate task percentage completion
+    total_tasks = sum(task_stats.values()) or 1  # Avoid division by zero
+    completion_percentage = round((task_stats['DONE'] / total_tasks) * 100, 1)
+    
+    # Get most active projects (based on tasks assigned to the user)
+    active_projects = []
+    project_activity = db.session.query(
+        Project.project_id,
+        Project.name,
+        db.func.count(Task.task_id).label('task_count')
+    ).join(
+        Task, Task.project_id == Project.project_id
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).group_by(
+        Project.project_id, Project.name
+    ).order_by(
+        db.desc('task_count')
+    ).limit(5).all()
+    
+    active_projects = [
+        {'name': p.name, 'task_count': p.task_count}
+        for p in project_activity
+    ]
+    
+    # Get recent tasks assigned to user (already correct)
+    recent_tasks = db.session.query(
+        Task
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).order_by(
+        Task.created_at.desc()
+    ).limit(5).all()
+    
+    # Get tasks by priority for tasks assigned to the user
+    priority_stats = {'low': 0, 'medium': 0, 'high': 0}
+    
+    priority_counts = db.session.query(
+        Task.priority, db.func.count(Task.task_id)
+    ).join(
+        Assigned, Assigned.task_id == Task.task_id
+    ).filter(
+        Assigned.user_id == user_id
+    ).group_by(Task.priority).all()
+    
+    for priority, count in priority_counts:
+        priority_stats[priority] = count
+    
+    return render_template(
+        'dashboard.html',
+        user_first_name=user.name,
+        total_projects=total_projects,
+        task_stats=task_stats,
+        completion_percentage=completion_percentage,
+        active_projects=active_projects,
+        recent_tasks=recent_tasks,
+        priority_stats=priority_stats,
+        quote=random_quote  # Pass the random quote to the template
+    )
 
 @app.route('/projects')
 def projects():

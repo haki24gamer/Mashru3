@@ -7,10 +7,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <!-- Add Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="d-flex" style="min-height: 100vh;">
-        <div class="sidebar bg-white text-dark p-3 d-flex flex-column" style="flex: 0 0 250px;">
+        <div class="sidebar bg-white text-dark p-3 d-flex flex-column" style="position: fixed; top: 0; left: 0; height: 100vh; width: 250px; overflow-y: auto; z-index: 1000;">
             <h2 class="text-center">Mashru3</h2>
             <ul class="list-unstyled flex-grow-1">
                 <li class="{% if request.endpoint == 'dashboard' %}active{% endif %}"><a href="{{ url_for('dashboard') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined mr-2">home</i> Page d’accueil</a></li>
@@ -21,7 +23,7 @@
                 <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined mr-2">settings</i> Parametre</a></li>
             </ul>
         </div>
-        <div class="content flex-grow-1 p-3">
+        <div class="content flex-grow-1 p-3" style="margin-left: 250px;">
             {% block content %}
             <!-- Content goes here -->
             {% endblock %}
