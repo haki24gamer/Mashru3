@@ -74,6 +74,36 @@
             align-items: center;
             justify-content: center;
         }
+        /* Logout button styling */
+        .logout-container {
+            margin-top: auto;
+            padding: 10px 0;
+            border-top: 1px solid #e9ecef;
+        }
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #dc3545;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 14px;
+            width: 100%;
+            border: none;
+            background-color: transparent;
+            text-align: left;
+            cursor: pointer;
+        }
+        .logout-btn:hover {
+            background-color: #fff8f8;
+            color: #c82333;
+            transform: translateX(5px);
+        }
+        .logout-btn i {
+            margin-right: 8px;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -101,6 +131,15 @@
                 <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">chat_bubble_outline</i> Notification</a></li>
                 <li class="{% if request.endpoint == 'parametre' %}active{% endif %}"><a href="{{ url_for('parametre') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">settings</i> Parametre</a></li>
             </ul>
+            
+            <!-- Logout Button -->
+            <div class="logout-container mt-auto">
+                <form action="{{ url_for('deconnexion') }}" method="post">
+                    <button type="submit" class="logout-btn d-flex align-items-center">
+                        <i class="material-icons-outlined">logout</i> Déconnexion
+                    </button>
+                </form>
+            </div>
         </div>
         <div class="content flex-grow-1 p-3" style="margin-left: 220px;">
             {% block content %}

@@ -786,6 +786,12 @@ def parametre():
     
     return render_template('parametre.html', user=user, success_message=success_message, error_message=error_message)
 
+@app.route('/deconnexion', methods=['POST'])
+def deconnexion():
+    # Clear the user's session
+    session.pop('user_id', None)
+    return redirect(url_for('connexion'))
+
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))

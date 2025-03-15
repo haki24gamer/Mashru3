@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="d-flex justify-content-between align-items-center mt-3">
         <h1 class="text-primary font-weight-bold">Vos Projets</h1>
         <button class="btn btn-primary d-flex align-items-center ml-auto" data-toggle="modal" data-target="#addProjectModal">
             <i class="material-icons-outlined mr-2">add_circle_outline</i> Créer un projet
@@ -13,16 +13,16 @@
     <hr>
     
     <!-- Project Stats Summary -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
+    <div class="row mb-3">
+        <div class="col-md-3 mb-2">
             <div class="card border-0 shadow-sm">
-                <div class="card-body d-flex align-items-center">
-                    <div class="rounded-circle bg-primary p-3 mr-3">
+                <div class="card-body d-flex align-items-center py-2">
+                    <div class="rounded-circle bg-primary p-2 mr-3">
                         <i class="material-icons text-white">folder</i>
                     </div>
                     <div>
-                        <h6 class="text-muted mb-1">Total Projects</h6>
-                        <h4 class="mb-0 font-weight-bold">{{ total_projects }}</h4>
+                        <h6 class="text-muted mb-1 small">Total Projects</h6>
+                        <h5 class="mb-0 font-weight-bold">{{ total_projects }}</h5>
                     </div>
                 </div>
             </div>
@@ -30,39 +30,39 @@
     </div>
 
     <!-- Projects Grid -->
-    <div class="row mt-4">
+    <div class="row mt-3">
         <div class="col-12">
             <div class="d-flex flex-column">
                 <div class="d-flex flex-row flex-wrap">
                     {% for project in projects %}
-                    <div class="p-2" style="flex: 0 0 calc(25% - 20px); margin: 10px;">
+                    <div class="p-1" style="flex: 0 0 calc(20% - 10px); margin: 5px;">
                         <a href="{{ url_for('project_detail', project_id=project.project_id) }}" class="text-decoration-none">
-                            <div class="card h-100 project-card shadow-sm border-0" style="border-radius: 15px; overflow: hidden; transition: all 0.3s ease;">
+                            <div class="card h-100 project-card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
                                 <div class="position-relative">
                                     {% if project.image %}
-                                    <img src="{{ project.image }}" alt="{{ project.name }}" class="card-img-top project-image" style="height: 140px; object-fit: cover;">
+                                    <img src="{{ project.image }}" alt="{{ project.name }}" class="card-img-top project-image" style="height: 120px; object-fit: cover;">
                                     {% else %}
-                                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 140px;">
-                                        <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Project Icon" class="img-fluid" style="max-height: 80px; max-width: 80%;">
+                                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                                        <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Project Icon" class="img-fluid" style="max-height: 70px; max-width: 70%;">
                                     </div>
                                     {% endif %}
-                                    <div class="position-absolute" style="top: 10px; right: 10px;">
-                                        <span class="badge badge-pill badge-primary">Active</span>
+                                    <div class="position-absolute" style="top: 8px; right: 8px;">
+                                        <span class="badge badge-pill badge-primary" style="font-size: 0.7rem;">Active</span>
                                     </div>
                                 </div>
-                                <div class="card-body">
-                                    <h5 class="card-title font-weight-bold text-truncate mb-1" title="{{ project.name }}">
+                                <div class="card-body py-2 px-3">
+                                    <h6 class="card-title font-weight-bold text-truncate mb-1" title="{{ project.name }}">
                                         {{ project.name }}
-                                    </h5>
-                                    <p class="text-muted small mb-2">
-                                        <i class="material-icons-outlined" style="font-size: 14px; vertical-align: middle;">calendar_today</i>
+                                    </h6>
+                                    <p class="text-muted small mb-2" style="font-size: 0.7rem;">
+                                        <i class="material-icons-outlined" style="font-size: 12px; vertical-align: middle;">calendar_today</i>
                                         {% if project.start_date %}
                                             {{ project.start_date.strftime('%d %b %Y') if project.start_date else 'Non définie' }}
                                         {% else %}
                                             Date non définie
                                         {% endif %}
                                     </p>
-                                    <div class="progress" style="height: 6px;">
+                                    <div class="progress" style="height: 5px;">
                                         <div class="progress-bar bg-success" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
                                 </div>
@@ -163,14 +163,15 @@
 
 <style>
     .project-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
     }
     
     .page-link {
         color: #007bff;
         border-radius: 5px;
         margin: 0 3px;
+        font-size: 0.9rem;
     }
     
     .page-item.active .page-link {
@@ -180,12 +181,30 @@
     
     .form-control {
         border-radius: 10px;
-        padding: 10px 15px;
+        padding: 8px 12px;
     }
     
     .btn {
         border-radius: 10px;
         font-weight: 500;
+    }
+    
+    @media (max-width: 1400px) {
+        div[style*="flex: 0 0 calc(20% - 10px)"] {
+            flex: 0 0 calc(25% - 10px) !important;
+        }
+    }
+    
+    @media (max-width: 1100px) {
+        div[style*="flex: 0 0 calc(20% - 10px)"] {
+            flex: 0 0 calc(33.33% - 10px) !important;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        div[style*="flex: 0 0 calc(20% - 10px)"] {
+            flex: 0 0 calc(50% - 10px) !important;
+        }
     }
 </style>
 {% endblock %}
