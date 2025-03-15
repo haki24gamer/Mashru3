@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, session
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
@@ -236,6 +236,79 @@ def assign_user():
 
     db.session.commit()
     return {'message': 'User(s) assigned successfully'}, 200
+
+@app.route('/update_task_status', methods=['POST'])
+def update_task_status():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    task_id = data.get('task_id')
+    new_status = data.get('status')
+    
+    try:
+        task = Task.query.get(task_id)
+        if task:
+            task.status = new_status
+            if new_status == 'DONE' and not task.finished_date:
+                task.finished_date = date.today()
+            elif new_status != 'DONE':
+                task.finished_date = None
+            
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Task status updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/get_task/<int:task_id>')
+def get_task(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    task = Task.query.get(task_id)
+    if task:
+        task_data = {
+            'task_id': task.task_id,
+            'title': task.title,
+            'description': task.description,
+            'priority': task.priority,
+            'status': task.status,
+            'start_date': task.start_date.isoformat() if task.start_date else None,
+            'end_date': task.end_date.isoformat() if task.end_date else None
+        }
+        return jsonify({'success': True, 'task': task_data})
+    else:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+@app.route('/update_task/<int:task_id>', methods=['POST'])
+def update_task(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    task = Task.query.get(task_id)
+    
+    if task:
+        try:
+            task.title = data.get('title', task.title)
+            task.description = data.get('description', task.description)
+            task.priority = data.get('priority', task.priority)
+            
+            if 'start_date' in data and data['start_date']:
+                task.start_date = date.fromisoformat(data['start_date'])
+            if 'end_date' in data and data['end_date']:
+                task.end_date = date.fromisoformat(data['end_date'])
+            
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Task updated successfully'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+    else:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
 
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
