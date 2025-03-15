@@ -158,6 +158,12 @@ COLLABORATION_QUOTES = [
     {"text": "La créativité s'épanouit lorsque nous travaillons ensemble.", "author": "Français Johansson"}
 ]
 
+# Create a context processor to provide quote to all templates
+@app.context_processor
+def inject_quote():
+    """Make a random quote available to all templates"""
+    return {'quote': random.choice(COLLABORATION_QUOTES) if 'COLLABORATION_QUOTES' in globals() else None}
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
