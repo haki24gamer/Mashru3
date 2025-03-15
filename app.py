@@ -1,11 +1,13 @@
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename  # Add this import
 from datetime import date
 import mysql.connector
 from email.message import EmailMessage
 from flask_mail import Mail, Message
 import random
+import os  # Add this import
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
@@ -20,6 +22,18 @@ app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '  # Replace with your app pa
 app.config['MAIL_USE_TLS'] = True  # Use TLS
 app.config['MAIL_USE_SSL'] = False  # Don't use SSL
 mail = Mail(app)
+
+# Add this configuration
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'profile_pics')
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB max upload
+
+# Make sure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Helper function to check allowed file extensions
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # Function to create database if it doesn't exist
 def create_database():
@@ -163,6 +177,19 @@ COLLABORATION_QUOTES = [
 def inject_quote():
     """Make a random quote available to all templates"""
     return {'quote': random.choice(COLLABORATION_QUOTES) if 'COLLABORATION_QUOTES' in globals() else None}
+
+# Add a new context processor for user data
+@app.context_processor
+def inject_user_data():
+    """Make user data available to all templates"""
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            return {
+                'user_first_name': user.name,
+                'user_image': user.image
+            }
+    return {'user_first_name': None, 'user_image': None}
 
 @app.route('/dashboard')
 def dashboard():
@@ -693,6 +720,25 @@ def parametre():
                     error_message = "Cet e-mail est déjà utilisé par un autre compte."
                 else:
                     user.email = new_email
+            
+            # Handle profile picture upload
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file and file.filename:
+                    if allowed_file(file.filename):
+                        try:
+                            # Create a secure filename and save the file
+                            filename = secure_filename(f"user_{user_id}_{file.filename}")
+                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            file.save(filepath)
+                            
+                            # Update the user's profile image path in the database
+                            relative_path = f"/static/uploads/profile_pics/{filename}"
+                            user.image = relative_path
+                        except Exception as e:
+                            error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
+                    else:
+                        error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
             
             if not error_message:
                 db.session.commit()
