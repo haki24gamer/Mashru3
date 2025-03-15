@@ -1,7 +1,161 @@
 <div class="tab-pane fade show active" id="timeline" role="tabpanel" aria-labelledby="timeline-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
-            <!-- Chronologie content will go here -->
+            <h4 class="card-title mb-4">Project Timeline</h4>
+            
+            <div class="timeline-wrapper">
+                <div class="timeline-controls mb-3">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-primary active" data-filter="all">All</button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="TODO">To Do</button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="IN_PROGRESS">In Progress</button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="REVIEW">Review</button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="DONE">Done</button>
+                    </div>
+                </div>
+                
+                <div class="timeline">
+                    {% for task in tasks %}
+                    <div class="timeline-item" data-status="{{ task.status }}">
+                        <div class="timeline-dot" style="background-color: 
+                            {% if task.status == 'TODO' %}#ffc107
+                            {% elif task.status == 'IN_PROGRESS' %}#17a2b8
+                            {% elif task.status == 'REVIEW' %}#6f42c1
+                            {% elif task.status == 'DONE' %}#28a745
+                            {% endif %}"></div>
+                        <div class="timeline-date">
+                            {{ task.start_date.strftime('%b %d') if task.start_date else 'No start date' }}
+                            {% if task.end_date %} - {{ task.end_date.strftime('%b %d') }}{% endif %}
+                        </div>
+                        <div class="timeline-content">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">{{ task.title }}</h5>
+                                    <span class="badge 
+                                        {% if task.status == 'TODO' %}bg-warning
+                                        {% elif task.status == 'IN_PROGRESS' %}bg-info
+                                        {% elif task.status == 'REVIEW' %}bg-purple
+                                        {% elif task.status == 'DONE' %}bg-success
+                                        {% endif %}">
+                                        {{ task.status.replace('_', ' ') }}
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <p>{{ task.description }}</p>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge 
+                                            {% if task.priority == 'low' %}bg-success
+                                            {% elif task.priority == 'medium' %}bg-info
+                                            {% elif task.priority == 'high' %}bg-danger
+                                            {% endif %}">
+                                            Priority: {{ task.priority }}
+                                        </span>
+                                        
+                                        {% if task.assigned_users %}
+                                        <div class="assigned-users">
+                                            <small>Assigned to:</small>
+                                            {% for user in task.assigned_users %}
+                                            <span class="badge bg-secondary">{{ user.name }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not tasks %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No tasks have been created for this project yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <style>
+                /* Timeline styling */
+                .timeline {
+                    position: relative;
+                    padding: 20px 0;
+                }
+                
+                .timeline::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    left: 100px;
+                    width: 3px;
+                    background: #dee2e6;
+                }
+                
+                .timeline-item {
+                    position: relative;
+                    margin-bottom: 30px;
+                    padding-left: 120px;
+                }
+                
+                .timeline-dot {
+                    position: absolute;
+                    left: 94px;
+                    width: 15px;
+                    height: 15px;
+                    border-radius: 50%;
+                    z-index: 1;
+                }
+                
+                .timeline-date {
+                    position: absolute;
+                    left: 0;
+                    width: 85px;
+                    text-align: right;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    color: #6c757d;
+                }
+                
+                .timeline-content {
+                    padding-bottom: 10px;
+                }
+                
+                .bg-purple {
+                    background-color: #6f42c1;
+                    color: white;
+                }
+                
+                .assigned-users .badge {
+                    margin-left: 3px;
+                }
+            </style>
+            
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Timeline filtering
+                    const filterButtons = document.querySelectorAll('.timeline-controls button');
+                    const timelineItems = document.querySelectorAll('.timeline-item');
+                    
+                    filterButtons.forEach(button => {
+                        button.addEventListener('click', function() {
+                            // Update active button
+                            filterButtons.forEach(btn => btn.classList.remove('active'));
+                            this.classList.add('active');
+                            
+                            const filter = this.getAttribute('data-filter');
+                            
+                            // Show/hide timeline items based on filter
+                            timelineItems.forEach(item => {
+                                if (filter === 'all' || item.getAttribute('data-status') === filter) {
+                                    item.style.display = '';
+                                } else {
+                                    item.style.display = 'none';
+                                }
+                            });
+                        });
+                    });
+                });
+            </script>
         </div>
     </div>
 </div>
