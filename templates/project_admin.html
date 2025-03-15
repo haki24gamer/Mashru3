@@ -1,7 +1,353 @@
 <div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
-            <!-- Admin content will go here -->
+            <h4 class="card-title mb-4">Project Administration</h4>
+            
+            <!-- Project Information Section -->
+            <div class="admin-section mb-5">
+                <h5 class="section-title"><i class="fas fa-info-circle me-2"></i>Project Information</h5>
+                <form id="project-info-form" class="mt-3">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="project-name">Project Name</label>
+                                <input type="text" class="form-control" id="project-name" value="{{ project.name }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="project-image">Project Image URL</label>
+                                <input type="text" class="form-control" id="project-image" value="{{ project.image }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="project-description">Description</label>
+                        <textarea class="form-control" id="project-description" rows="3">{{ project.description }}</textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="start-date">Start Date</label>
+                                <input type="date" class="form-control" id="start-date" value="{{ project.start_date }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="end-date">End Date</label>
+                                <input type="date" class="form-control" id="end-date" value="{{ project.end_date }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="update-project-btn">Update Project</button>
+                </form>
+            </div>
+            
+            <!-- Team Management Section -->
+            <div class="admin-section mb-5">
+                <h5 class="section-title"><i class="fas fa-users me-2"></i>Team Management</h5>
+                
+                <!-- Current Team Members -->
+                <div class="current-members mt-3 mb-4">
+                    <h6>Current Team Members</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="team-members-list">
+                                {% for participant in participants %}
+                                <tr>
+                                    <td>{{ participant.name }}</td>
+                                    <td>{{ participant.email }}</td>
+                                    <td>
+                                        <select class="form-select role-select" data-user-id="{{ participant.user_id }}">
+                                            <option value="Owner" {% if participant.role == 'Owner' %}selected{% endif %}>Owner</option>
+                                            <option value="Admin" {% if participant.role == 'Admin' %}selected{% endif %}>Admin</option>
+                                            <option value="Member" {% if participant.role == 'Member' %}selected{% endif %}>Member</option>
+                                            <option value="Viewer" {% if participant.role == 'Viewer' %}selected{% endif %}>Viewer</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm remove-member-btn" data-user-id="{{ participant.user_id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Add New Member Form -->
+                <div class="add-member-form">
+                    <h6>Add Team Member</h6>
+                    <form id="add-member-form" class="row g-3">
+                        <div class="col-md-5">
+                            <input type="email" class="form-control" id="new-member-email" placeholder="Email address">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" id="new-member-role">
+                                <option value="Admin">Admin</option>
+                                <option value="Member" selected>Member</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-success w-100" id="add-member-btn">
+                                <i class="fas fa-user-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Project Settings Section -->
+            <div class="admin-section">
+                <h5 class="section-title"><i class="fas fa-cog me-2"></i>Project Settings</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-task-dependencies">
+                            <label class="form-check-label" for="enable-task-dependencies">Enable Task Dependencies</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-time-tracking">
+                            <label class="form-check-label" for="enable-time-tracking">Enable Time Tracking</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-notifications">
+                            <label class="form-check-label" for="enable-notifications">Enable Email Notifications</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="project-visibility" class="form-label">Project Visibility</label>
+                            <select class="form-select" id="project-visibility">
+                                <option value="private">Private - Only team members</option>
+                                <option value="public">Public - Anyone with link</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+                    <button type="button" class="btn btn-danger" id="delete-project-btn">Delete Project</button>
+                </div>
+            </div>
+            
         </div>
     </div>
 </div>
+
+<script>
+    // Project Information Update
+    document.getElementById('update-project-btn').addEventListener('click', function() {
+        const projectId = {{ project.project_id }};
+        const projectData = {
+            name: document.getElementById('project-name').value,
+            description: document.getElementById('project-description').value,
+            image: document.getElementById('project-image').value,
+            start_date: document.getElementById('start-date').value,
+            end_date: document.getElementById('end-date').value
+        };
+        
+        fetch(`/update_project/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(projectData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Project updated successfully!');
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating project:', error);
+            alert('Failed to update project. Please try again.');
+        });
+    });
+    
+    // Role Selection Change
+    document.querySelectorAll('.role-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const newRole = this.value;
+            const projectId = {{ project.project_id }};
+            
+            fetch('/update_member_role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    project_id: projectId,
+                    role: newRole
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Member role updated successfully!');
+                } else {
+                    alert(`Error: ${data.message}`);
+                    // Reset to previous value if failed
+                    this.value = this.getAttribute('data-original-value');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating role:', error);
+                alert('Failed to update role. Please try again.');
+            });
+        });
+    });
+    
+    // Add Member
+    document.getElementById('add-member-btn').addEventListener('click', function() {
+        const email = document.getElementById('new-member-email').value;
+        const role = document.getElementById('new-member-role').value;
+        const projectId = {{ project.project_id }};
+        
+        if (!email) {
+            alert('Please enter an email address');
+            return;
+        }
+        
+        fetch('/add_member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                role: role,
+                project_id: projectId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message === 'Member added successfully') {
+                alert('Member added successfully!');
+                // Reload page to show updated member list
+                window.location.reload();
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error adding member:', error);
+            alert('Failed to add member. Please try again.');
+        });
+    });
+    
+    // Remove Member
+    document.querySelectorAll('.remove-member-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to remove this member?')) {
+                return;
+            }
+            
+            const userId = this.dataset.userId;
+            const projectId = {{ project.project_id }};
+            
+            fetch('/remove_member', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    project_id: projectId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Member removed successfully!');
+                    // Remove the row from the table
+                    this.closest('tr').remove();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error removing member:', error);
+                alert('Failed to remove member. Please try again.');
+            });
+        });
+    });
+    
+    // Save Project Settings
+    document.getElementById('save-settings-btn').addEventListener('click', function() {
+        const projectId = {{ project.project_id }};
+        const settings = {
+            enable_task_dependencies: document.getElementById('enable-task-dependencies').checked,
+            enable_time_tracking: document.getElementById('enable-time-tracking').checked,
+            enable_notifications: document.getElementById('enable-notifications').checked,
+            project_visibility: document.getElementById('project-visibility').value
+        };
+        
+        fetch(`/update_project_settings/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Settings saved successfully!');
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving settings:', error);
+            alert('Failed to save settings. Please try again.');
+        });
+    });
+    
+    // Delete Project
+    document.getElementById('delete-project-btn').addEventListener('click', function() {
+        if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            return;
+        }
+        
+        const projectId = {{ project.project_id }};
+        
+        fetch(`/delete_project/${projectId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Project deleted successfully!');
+                window.location.href = '/projects';
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting project:', error);
+            alert('Failed to delete project. Please try again.');
+        });
+    });
+</script>

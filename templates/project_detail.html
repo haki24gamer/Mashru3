@@ -31,12 +31,14 @@
                 <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
             {% endif %}
         </li>
+        {% if is_admin %}
         <li class="nav-item {% if request.args.get('tab') == 'admin' %}active{% endif %}" style="color: darkgrey; flex-shrink: 0;">
             <a class="nav-link" id="admin-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" role="tab" aria-controls="admin" aria-selected="false" style="position: relative;">Admin</a>
             {% if request.args.get('tab') == 'admin' %}
                 <div style="position: absolute; bottom: -5px; left: 0; right: 0; height: 2px; background-color: blue;"></div>
             {% endif %}
         </li>
+        {% endif %}
     </ul>
     <hr style="margin-top: 0;">
     <div class="tab-content" id="projectTabContent">
