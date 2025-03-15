@@ -318,8 +318,17 @@ def project_detail(project_id):
     # Get the current project
     project = Project.query.get_or_404(project_id)
     
-    # Get all project participants
-    participants = db.session.query(User).join(Participate).filter(Participate.project_id == project_id).all()
+    # Get all project participants with their roles
+    participants_data = db.session.query(
+        User, Participate.role
+    ).join(
+        Participate, User.user_id == Participate.user_id
+    ).filter(
+        Participate.project_id == project_id
+    ).all()
+    
+    # Format participants data for the template
+    participants = [{'name': user.name, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
     
     # Determine the current user's role in this project
     user_participation = Participate.query.filter_by(
