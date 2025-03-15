@@ -1,7 +1,460 @@
 <div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
-            <!-- Admin content will go here -->
+            <h4 class="card-title mb-4">Project Administration</h4>
+            
+            <!-- Project Information Section -->
+            <div class="admin-section mb-5">
+                <h5 class="section-title"><i class="fas fa-info-circle me-2"></i>Project Information</h5>
+                <form id="project-info-form" class="mt-3">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="project-name">Project Name</label>
+                                <input type="text" class="form-control" id="project-name" value="{{ project.name }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="project-image">Project Image URL</label>
+                                <input type="text" class="form-control" id="project-image" value="{{ project.image }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="project-description">Description</label>
+                        <textarea class="form-control" id="project-description" rows="3">{{ project.description }}</textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="start-date">Start Date</label>
+                                <input type="date" class="form-control" id="start-date" value="{{ project.start_date }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="end-date">End Date</label>
+                                <input type="date" class="form-control" id="end-date" value="{{ project.end_date }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="update-project-btn">Update Project</button>
+                </form>
+            </div>
+            
+            <!-- Team Management Section -->
+            <div class="admin-section mb-5">
+                <h5 class="section-title"><i class="fas fa-users me-2"></i>Team Management</h5>
+                
+                <!-- Current Team Members -->
+                <div class="current-members mt-3 mb-4">
+                    <h6>Current Team Members</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="team-members-list">
+                                {% for participant in participants %}
+                                <tr>
+                                    <td>{{ participant.name }}</td>
+                                    <td>{{ participant.email }}</td>
+                                    <td>
+                                        <select class="form-select role-select" data-user-id="{{ participant.user_id }}">
+                                            <option value="Owner" {% if participant.role == 'Owner' %}selected{% endif %}>Owner</option>
+                                            <option value="Admin" {% if participant.role == 'Admin' %}selected{% endif %}>Admin</option>
+                                            <option value="Member" {% if participant.role == 'Member' %}selected{% endif %}>Member</option>
+                                            <option value="Viewer" {% if participant.role == 'Viewer' %}selected{% endif %}>Viewer</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm remove-member-btn" data-user-id="{{ participant.user_id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Add New Member Form -->
+                <div class="add-member-form">
+                    <h6>Add Team Member</h6>
+                    <form id="add-member-form" class="row g-3">
+                        <div class="col-md-5">
+                            <input type="email" class="form-control" id="new-member-email" placeholder="Email address">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select" id="new-member-role">
+                                <option value="Admin">Admin</option>
+                                <option value="Member" selected>Member</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-success w-100" id="add-member-btn">
+                                <i class="fas fa-user-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Project Settings Section -->
+            <div class="admin-section">
+                <h5 class="section-title"><i class="fas fa-cog me-2"></i>Project Settings</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-task-dependencies">
+                            <label class="form-check-label" for="enable-task-dependencies">Enable Task Dependencies</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-time-tracking">
+                            <label class="form-check-label" for="enable-time-tracking">Enable Time Tracking</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-notifications">
+                            <label class="form-check-label" for="enable-notifications">Enable Email Notifications</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="project-visibility" class="form-label">Project Visibility</label>
+                            <select class="form-select" id="project-visibility">
+                                <option value="private">Private - Only team members</option>
+                                <option value="public">Public - Anyone with link</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+                    <button type="button" class="btn btn-danger" id="delete-project-btn">Delete Project</button>
+                </div>
+            </div>
+            
         </div>
     </div>
 </div>
+
+<!-- Bootstrap Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmationModalBody">
+                <!-- Message will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Member Removal Confirmation Modal -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1" aria-labelledby="removeMemberModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="removeMemberModalLabel">Remove Team Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to remove this member from the project?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-remove-member-btn">Remove Member</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to show Bootstrap confirmation modal
+    function showConfirmation(message, type = 'success') {
+        const modalBody = document.getElementById('confirmationModalBody');
+        const modalTitle = document.getElementById('confirmationModalLabel');
+        
+        // Set message and title based on type
+        modalBody.textContent = message;
+        
+        if (type === 'success') {
+            modalTitle.textContent = 'Success';
+            modalTitle.className = 'modal-title text-success';
+        } else if (type === 'error') {
+            modalTitle.textContent = 'Error';
+            modalTitle.className = 'modal-title text-danger';
+        } else {
+            modalTitle.textContent = 'Confirmation';
+            modalTitle.className = 'modal-title';
+        }
+        
+        // Show the modal
+        const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+        confirmationModal.show();
+    }
+    
+    // Project Information Update
+    document.getElementById('update-project-btn').addEventListener('click', function() {
+        const projectId = {{ project.project_id }};
+        const projectData = {
+            name: document.getElementById('project-name').value,
+            description: document.getElementById('project-description').value,
+            image: document.getElementById('project-image').value,
+            start_date: document.getElementById('start-date').value,
+            end_date: document.getElementById('end-date').value
+        };
+        
+        fetch(`/update_project/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(projectData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showConfirmation('Project updated successfully!', 'success');
+            } else {
+                showConfirmation(`Error: ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating project:', error);
+            showConfirmation('Failed to update project. Please try again.', 'error');
+        });
+    });
+    
+    // Role Selection Change
+    document.querySelectorAll('.role-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const newRole = this.value;
+            const projectId = {{ project.project_id }};
+            
+            fetch('/update_member_role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    project_id: projectId,
+                    role: newRole
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showConfirmation('Member role updated successfully!', 'success');
+                } else {
+                    showConfirmation(`Error: ${data.message}`, 'error');
+                    // Reset to previous value if failed
+                    this.value = this.getAttribute('data-original-value');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating role:', error);
+                showConfirmation('Failed to update role. Please try again.', 'error');
+            });
+        });
+    });
+    
+    // Add Member
+    document.getElementById('add-member-btn').addEventListener('click', function() {
+        const email = document.getElementById('new-member-email').value;
+        const role = document.getElementById('new-member-role').value;
+        const projectId = {{ project.project_id }};
+        
+        if (!email) {
+            showConfirmation('Please enter an email address', 'error');
+            return;
+        }
+        
+        fetch('/add_member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                role: role,
+                project_id: projectId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message === 'Member added successfully') {
+                showConfirmation('Member added successfully!', 'success');
+                // Reload page to show updated member list
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showConfirmation(`Error: ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding member:', error);
+            showConfirmation('Failed to add member. Please try again.', 'error');
+        });
+    });
+    
+    // Remove Member
+    document.querySelectorAll('.remove-member-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const memberRow = this.closest('tr');
+            const memberName = memberRow.cells[0].textContent;
+            
+            // Store the user ID and row reference for later use
+            document.getElementById('confirm-remove-member-btn').dataset.userId = userId;
+            document.getElementById('confirm-remove-member-btn').dataset.rowElement = memberRow.rowIndex;
+            
+            // Customize modal message with member name
+            document.querySelector('#removeMemberModal .modal-body').textContent = 
+                `Are you sure you want to remove ${memberName} from the project?`;
+            
+            // Show the modal
+            const removeMemberModal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
+            removeMemberModal.show();
+        });
+    });
+    
+    // Handle member removal confirmation
+    document.getElementById('confirm-remove-member-btn').addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const projectId = {{ project.project_id }};
+        const removeMemberModal = bootstrap.Modal.getInstance(document.getElementById('removeMemberModal'));
+        
+        fetch('/remove_member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                project_id: projectId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            removeMemberModal.hide();
+            
+            if (data.success) {
+                showConfirmation('Member removed successfully!', 'success');
+                // Find and remove the row from the table
+                const memberRow = document.querySelector(`.remove-member-btn[data-user-id="${userId}"]`).closest('tr');
+                memberRow.remove();
+            } else {
+                showConfirmation(`Error: ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            removeMemberModal.hide();
+            console.error('Error removing member:', error);
+            showConfirmation('Failed to remove member. Please try again.', 'error');
+        });
+    });
+    
+    // Save Project Settings
+    document.getElementById('save-settings-btn').addEventListener('click', function() {
+        const projectId = {{ project.project_id }};
+        const settings = {
+            enable_task_dependencies: document.getElementById('enable-task-dependencies').checked,
+            enable_time_tracking: document.getElementById('enable-time-tracking').checked,
+            enable_notifications: document.getElementById('enable-notifications').checked,
+            project_visibility: document.getElementById('project-visibility').value
+        };
+        
+        fetch(`/update_project_settings/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showConfirmation('Settings saved successfully!', 'success');
+            } else {
+                showConfirmation(`Error: ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving settings:', error);
+            showConfirmation('Failed to save settings. Please try again.', 'error');
+        });
+    });
+    
+    // Delete Project with confirmation modal
+    document.getElementById('delete-project-btn').addEventListener('click', function() {
+        // Create a confirmation dialog
+        const confirmModal = document.createElement('div');
+        confirmModal.innerHTML = `
+            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">Delete Project</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure you want to delete this project? This action cannot be undone.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete Project</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(confirmModal);
+        
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        deleteModal.show();
+        
+        document.getElementById('confirm-delete-btn').addEventListener('click', function() {
+            const projectId = {{ project.project_id }};
+            
+            fetch(`/delete_project/${projectId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                deleteModal.hide();
+                if (data.success) {
+                    showConfirmation('Project deleted successfully!', 'success');
+                    setTimeout(() => window.location.href = '/projects', 1500);
+                } else {
+                    showConfirmation(`Error: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                deleteModal.hide();
+                console.error('Error deleting project:', error);
+                showConfirmation('Failed to delete project. Please try again.', 'error');
+            });
+        });
+    });
+</script>

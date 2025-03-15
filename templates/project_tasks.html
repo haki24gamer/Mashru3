@@ -1,110 +1,263 @@
 <div class="tab-pane fade show active" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
-    <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px; padding-left: 15px; padding-right: 15px;">
-        <div class="card-body">
-            <div class="kanban-board" style="display: flex; justify-content: space-around;">
-                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h3 style="font-size: 13.25px; font-weight: normal;">À faire</h3>
-                        <div style="width: 250px;"></div>
-                        <!-- Pending tasks will be displayed here -->
-                        <div id="todoTasks">
-                            {% for task in tasks if task.status == 'TODO' %}
-                            <div class="task" style="position: relative;">
-                                <strong>{{ task.title }}</strong>
-                                <p>{{ task.description }}</p>
-                                <p>Assigné à: 
-                                    {% if task.assigned_users %}
-                                        {% for user in task.assigned_users %}
-                                            {{ user.name }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        Non assigné
-                                    {% endif %}
-                                </p>
-                                <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Tâches du projet</h3>
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
+            <i class="material-icons-outlined">add</i> Nouvelle tâche
+        </button>
+    </div>
+    <div class="kanban-container mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="kanban-column">
+                    <h5 class="kanban-title bg-light p-2">À Faire</h5>
+                    <div class="kanban-items" id="todo-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="TODO">
+                        {% for task in tasks %}
+                            {% if task.status == 'TODO' %}
+                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ task.title }}</h6>
+                                        <p class="card-text small">{{ task.description }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
+                                            <div class="task-users">
+                                                {% for user in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="task-actions mt-2 text-right">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
-                                    Assigner un utilisateur
-                                </button>
                             </div>
-                            {% endfor %}
-                        </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
-                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
-                    </button>
                 </div>
-                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h3 style="font-size: 13.25px; font-weight: normal;">En cours</h3>
-                        <div style="width: 250px;"></div>
-                        <!-- Tasks will go here -->
-                         <div id="pendingTasks">
-                            {% for task in tasks if task.status == 'IN_PROGRESS' %}
-                            <div class="task" style="position: relative;">
-                                <strong>{{ task.title }}</strong>
-                                <p>{{ task.description }}</p>
-                                <p>Assigné à: 
-                                    {% if task.assigned_users %}
-                                        {% for user in task.assigned_users %}
-                                            {{ user.name }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        Non assigné
-                                    {% endif %}
-                                </p>
-                                <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
+            </div>
+            <div class="col-md-3">
+                <div class="kanban-column">
+                    <h5 class="kanban-title bg-light p-2">En cours</h5>
+                    <div class="kanban-items" id="in-progress-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="IN_PROGRESS">
+                        {% for task in tasks %}
+                            {% if task.status == 'IN_PROGRESS' %}
+                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ task.title }}</h6>
+                                        <p class="card-text small">{{ task.description }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
+                                            <div class="task-users">
+                                                {% for user in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="task-actions mt-2 text-right">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
-                                    Assigner un utilisateur
-                                </button>
                             </div>
-                            {% endfor %}
-                        </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('IN_PROGRESS')">
-                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
-                    </button>
                 </div>
-                <div class="kanban-column" style="flex: 1; margin: 0 5px; padding: 10px; background-color: #ffffff; border-radius: 10px; font-size: 11px; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h3 style="font-size: 13.25px; font-weight: normal;">Terminer</h3>
-                        <div style="width: 250px;"></div>
-                        <!-- Tasks will go here -->
-                         <div id="doneTasks">
-                            {% for task in tasks if task.status == 'DONE' %}
-                            <div class="task" style="position: relative;">
-                                <strong>{{ task.title }}</strong>
-                                <p>{{ task.description }}</p>
-                                <p>Assigné à: 
-                                    {% if task.assigned_users %}
-                                        {% for user in task.assigned_users %}
-                                            {{ user.name }}{% if not loop.last %}, {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        Non assigné
-                                    {% endif %}
-                                </p>
-                                <div class="participants-icon" style="position: absolute; bottom: 10px; right: 10px;">
-                                    <img src="{{ url_for('static', filename='images/Users.svg') }}" alt="Participants" style="width: 24px; height: 24px; cursor: pointer;" data-toggle="popover" data-trigger="hover" data-html="true" data-content="{% for user in task.assigned_users %}{{ user.name }}<br>{% endfor %}">
+            </div>
+            <div class="col-md-3">
+                <div class="kanban-column">
+                    <h5 class="kanban-title bg-light p-2">En révision</h5>
+                    <div class="kanban-items" id="review-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="REVIEW">
+                        {% for task in tasks %}
+                            {% if task.status == 'REVIEW' %}
+                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ task.title }}</h6>
+                                        <p class="card-text small">{{ task.description }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
+                                            <div class="task-users">
+                                                {% for user in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="task-actions mt-2 text-right">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#assignUserModal" onclick="setTaskId('{{ task.task_id }}')">
-                                    Assigner un utilisateur
-                                </button>
                             </div>
-                            {% endfor %}
-                         
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    <button class="btn btn-light mt-2" style="background-color: #ffffff; width: 100%; font-size: 13.25px; font-weight: normal; text-align: left;" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('DONE')">
-                        <span style="font-size: 16px; margin-right: 5px;">+</span> Nouvelle tâche
-                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kanban-column">
+                    <h5 class="kanban-title bg-light p-2">Terminé</h5>
+                    <div class="kanban-items" id="done-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="DONE">
+                        {% for task in tasks %}
+                            {% if task.status == 'DONE' %}
+                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ task.title }}</h6>
+                                        <p class="card-text small">{{ task.description }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
+                                            <div class="task-users">
+                                                {% for user in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="task-actions mt-2 text-right">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .kanban-container {
+        overflow-x: auto;
+    }
+    
+    .kanban-column {
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        min-height: 500px;
+        height: 100%;
+    }
+    
+    .kanban-title {
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .kanban-items {
+        min-height: 400px;
+        padding: 10px;
+    }
+    
+    .kanban-item {
+        cursor: grab;
+    }
+    
+    .kanban-item:active {
+        cursor: grabbing;
+    }
+    
+    .task-users {
+        display: flex;
+    }
+    
+    .user-initials {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background-color: #6c757d;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: -5px;
+        font-size: 12px;
+    }
+    
+    .user-initials:first-child {
+        margin-left: 0;
+    }
+</style>
+
+<script>
+    function allowDrop(ev) {
+        ev.preventDefault();
+    }
+
+    function drag(ev) {
+        ev.dataTransfer.setData("text", ev.target.id);
+    }
+
+    function drop(ev) {
+        ev.preventDefault();
+        const taskId = ev.dataTransfer.getData("text");
+        const taskElement = document.getElementById(taskId);
+        const targetColumn = ev.target.closest('.kanban-items');
+        
+        if (targetColumn) {
+            targetColumn.appendChild(taskElement);
+            
+            // Get status from target column
+            const newStatus = targetColumn.dataset.status;
+            // Get task ID from the task element
+            const taskDataId = taskElement.getAttribute('data-task-id');
+            
+            // Send AJAX request to update task status
+            updateTaskStatus(taskDataId, newStatus);
+        }
+    }
+
+    function updateTaskStatus(taskId, newStatus) {
+        fetch('/update_task_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_id: taskId,
+                status: newStatus
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Task status updated successfully');
+            } else {
+                console.error('Failed to update task status');
+                // Optionally refresh the page to restore the original state
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task status:', error);
+        });
+    }
+</script>
 
 <!-- New Task Modal -->
 <div class="modal fade" id="newTaskModal" tabindex="-1" role="dialog" aria-labelledby="newTaskModalLabel" aria-hidden="true">
@@ -182,6 +335,53 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" onclick="submitAssignUserForm()">Assigner un utilisateur</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">Modifier la tâche</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <input type="hidden" id="editTaskId">
+                    <div class="form-group">
+                        <label for="editTaskTitle">Titre de la tâche</label>
+                        <input type="text" class="form-control" id="editTaskTitle" placeholder="Entrez le titre de la tâche">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskDescription">Description</label>
+                        <textarea class="form-control" id="editTaskDescription" rows="3" placeholder="Entrez la description de la tâche"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskPriority">Priorité</label>
+                        <select class="form-control" id="editTaskPriority">
+                            <option value="low">low</option>
+                            <option value="medium">medium</option>
+                            <option value="high">high</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskStartDate">Date de début</label>
+                        <input type="date" class="form-control" id="editTaskStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskEndDate">Date de fin</label>
+                        <input type="date" class="form-control" id="editTaskEndDate">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="updateTask()">Enregistrer</button>
             </div>
         </div>
     </div>
@@ -266,6 +466,65 @@ function createTask() {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to create task');
+    });
+}
+
+function editTask(taskId) {
+    // Prevent triggering drag event
+    event.stopPropagation();
+    
+    // Fetch task details
+    fetch(`/get_task/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Populate the form
+                document.getElementById('editTaskId').value = data.task.task_id;
+                document.getElementById('editTaskTitle').value = data.task.title;
+                document.getElementById('editTaskDescription').value = data.task.description;
+                document.getElementById('editTaskPriority').value = data.task.priority;
+                document.getElementById('editTaskStartDate').value = data.task.start_date;
+                document.getElementById('editTaskEndDate').value = data.task.end_date;
+                
+                // Show the modal
+                $('#editTaskModal').modal('show');
+            } else {
+                alert('Failed to fetch task details');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching task details:', error);
+        });
+}
+
+function updateTask() {
+    const taskId = document.getElementById('editTaskId').value;
+    const data = {
+        title: document.getElementById('editTaskTitle').value,
+        description: document.getElementById('editTaskDescription').value,
+        priority: document.getElementById('editTaskPriority').value,
+        start_date: document.getElementById('editTaskStartDate').value,
+        end_date: document.getElementById('editTaskEndDate').value
+    };
+    
+    fetch(`/update_task/${taskId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#editTaskModal').modal('hide');
+            location.reload(); // Refresh to show updated task
+        } else {
+            alert('Failed to update task: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating task:', error);
     });
 }
 </script>

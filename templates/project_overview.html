@@ -1,11 +1,119 @@
 <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
-            <p><strong>Description:</strong> {{ project.description }}</p>
-            <p><strong>Date de Création:</strong> {{ project.created_at }}</p>
-            <p><strong>Date de Début:</strong> {{ project.start_date }}</p>
-            <p><strong>Date de Fin:</strong> {{ project.end_date }}</p>
-            <img src="{{ project.image_url }}" alt="Project Image" class="img-fluid">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h4 class="card-title">Description du Projet</h4>
+                    <p class="card-text">{{ project.description }}</p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8 mb-4">
+                    <h4 class="card-title">Avancement des Tâches</h4>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="taskProgressChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <h4 class="card-title">Résumé</h4>
+                    <div class="task-summary">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>À Faire:</span>
+                            <span class="badge bg-secondary" id="todo-count">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>En Cours:</span>
+                            <span class="badge bg-primary" id="inprogress-count">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>En Révision:</span>
+                            <span class="badge bg-warning" id="review-count">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Terminé:</span>
+                            <span class="badge bg-success" id="done-count">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span>Total:</span>
+                            <span class="badge bg-dark" id="total-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Date de début:</strong> {{ project.start_date.strftime('%d/%m/%Y') if project.start_date }}</p>
+                    <p><strong>Date de fin prévue:</strong> {{ project.end_date.strftime('%d/%m/%Y') if project.end_date }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Date de création:</strong> {{ project.created_at.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Date de fin réelle:</strong> {{ project.finished_date.strftime('%d/%m/%Y') if project.finished_date else 'Non terminé' }}</p>
+                </div>
+            </div>
+            
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Extract task data from the tasks list
+                    var todoCount = 0;
+                    var inProgressCount = 0;
+                    var reviewCount = 0;
+                    var doneCount = 0;
+                    
+                    {% for task in tasks %}
+                        {% if task.status == 'TODO' %}
+                            todoCount++;
+                        {% elif task.status == 'IN_PROGRESS' %}
+                            inProgressCount++;
+                        {% elif task.status == 'REVIEW' %}
+                            reviewCount++;
+                        {% elif task.status == 'DONE' %}
+                            doneCount++;
+                        {% endif %}
+                    {% endfor %}
+                    
+                    // Update the counter elements
+                    document.getElementById('todo-count').textContent = todoCount;
+                    document.getElementById('inprogress-count').textContent = inProgressCount;
+                    document.getElementById('review-count').textContent = reviewCount;
+                    document.getElementById('done-count').textContent = doneCount;
+                    document.getElementById('total-count').textContent = todoCount + inProgressCount + reviewCount + doneCount;
+                    
+                    // Create the chart
+                    var ctx = document.getElementById('taskProgressChart').getContext('2d');
+                    var chart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['À Faire', 'En Cours', 'En Révision', 'Terminé'],
+                            datasets: [{
+                                data: [todoCount, inProgressCount, reviewCount, doneCount],
+                                backgroundColor: [
+                                    '#6c757d', // Secondary for TODO
+                                    '#0d6efd', // Primary for IN_PROGRESS
+                                    '#ffc107', // Warning for REVIEW
+                                    '#198754'  // Success for DONE
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Distribution des Tâches'
+                                }
+                            }
+                        }
+                    });
+                });
+            </script>
         </div>
     </div>
 </div>
