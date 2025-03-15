@@ -21,27 +21,7 @@
     {% endif %}
     
     <div class="row">
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5>Photo de profil</h5>
-                </div>
-                <div class="card-body text-center">
-                    <img src="{{ user.image or 'https://via.placeholder.com/150' }}" alt="Photo de profil" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
-                    
-                    <form method="post" action="{{ url_for('parametre') }}">
-                        <input type="hidden" name="action" value="update_image">
-                        <div class="mb-3">
-                            <label for="image" class="form-label">URL de l'image</label>
-                            <input type="text" class="form-control" id="image" name="image" value="{{ user.image or '' }}">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Mettre à jour l'image</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-8">
+        <div class="col-md-12">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5>Informations personnelles</h5>

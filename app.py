@@ -715,12 +715,6 @@ def parametre():
                 user.password = generate_password_hash(new_password)
                 db.session.commit()
                 success_message = "Votre mot de passe a été mis à jour avec succès."
-        
-        elif action == 'update_image':
-            # Update profile image (URL or path)
-            user.image = request.form.get('image', user.image)
-            db.session.commit()
-            success_message = "Votre image de profil a été mise à jour avec succès."
     
     return render_template('parametre.html', user=user, success_message=success_message, error_message=error_message)
 
