@@ -23,13 +23,16 @@ app.config['MAIL_USE_TLS'] = True  # Use TLS
 app.config['MAIL_USE_SSL'] = False  # Don't use SSL
 mail = Mail(app)
 
-# Add this configuration
-app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'profile_pics')
+# Configure uploads directories
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+app.config['PROFILE_PICS_FOLDER'] = os.path.join(app.config['UPLOAD_FOLDER'], 'profile_pics')
+app.config['PROJECT_IMAGES_FOLDER'] = os.path.join(app.config['UPLOAD_FOLDER'], 'project_images')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB max upload
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload
 
-# Make sure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Make sure upload directories exist
+os.makedirs(app.config['PROFILE_PICS_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROJECT_IMAGES_FOLDER'], exist_ok=True)
 
 # Helper function to check allowed file extensions
 def allowed_file(filename):
@@ -517,20 +520,39 @@ def update_project(project_id):
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
     try:
-        data = request.get_json()
         project = Project.query.get_or_404(project_id)
         
-        project.name = data.get('name', project.name)
-        project.description = data.get('description', project.description)
-        project.image = data.get('image', project.image)
+        # Handle form data
+        if request.files and 'project_image' in request.files:
+            file = request.files['project_image']
+            if file and file.filename and allowed_file(file.filename):
+                # Create secure filename and save the file
+                filename = secure_filename(f"project_{project_id}_{file.filename}")
+                filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
+                file.save(filepath)
+                
+                # Update project image path
+                relative_path = f"/static/uploads/project_images/{filename}"
+                project.image = relative_path
         
-        if data.get('start_date'):
-            project.start_date = date.fromisoformat(data['start_date'])
-        if data.get('end_date'):
-            project.end_date = date.fromisoformat(data['end_date'])
+        # Update other project data
+        if request.form.get('name'):
+            project.name = request.form.get('name')
+        if request.form.get('description'):
+            project.description = request.form.get('description')
+        if request.form.get('start_date'):
+            project.start_date = date.fromisoformat(request.form.get('start_date'))
+        if request.form.get('end_date'):
+            project.end_date = date.fromisoformat(request.form.get('end_date'))
             
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Project updated successfully'})
+        
+        # Return success response with updated image path if applicable
+        response = {'success': True, 'message': 'Project updated successfully'}
+        if project.image:
+            response['image_path'] = project.image
+            
+        return jsonify(response)
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -729,7 +751,7 @@ def parametre():
                         try:
                             # Create a secure filename and save the file
                             filename = secure_filename(f"user_{user_id}_{file.filename}")
-                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
                             file.save(filepath)
                             
                             # Update the user's profile image path in the database

@@ -1,4 +1,3 @@
-<!-- filepath: /c:/Users/DrPower/OneDrive/Documents/code/Gestion projet/my-flask-app/templates/project.html -->
 {% extends "base.html" %}
 
 {% block title %}Mes Projets{% endblock %}
@@ -6,30 +5,86 @@
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mt-4">
-        <h1>Vos Projets</h1>
-        <button class="btn btn-light d-flex align-items-center ml-auto" data-toggle="modal" data-target="#addProjectModal">
+        <h1 class="text-primary font-weight-bold">Vos Projets</h1>
+        <button class="btn btn-primary d-flex align-items-center ml-auto" data-toggle="modal" data-target="#addProjectModal">
             <i class="material-icons-outlined mr-2">add_circle_outline</i> Créer un projet
         </button>
     </div>
     <hr>
+    
+    <!-- Project Stats Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle bg-primary p-3 mr-3">
+                        <i class="material-icons text-white">folder</i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-1">Total Projects</h6>
+                        <h4 class="mb-0 font-weight-bold">{{ total_projects }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Grid -->
     <div class="row mt-4">
         <div class="col-12">
-            <p>Total Projects: {{ total_projects }}</p>
             <div class="d-flex flex-column">
                 <div class="d-flex flex-row flex-wrap">
                     {% for project in projects %}
-                    <div class="p-2" style="flex: 0 0 calc(25% - 10px); margin: 5px;">
+                    <div class="p-2" style="flex: 0 0 calc(25% - 20px); margin: 10px;">
                         <a href="{{ url_for('project_detail', project_id=project.project_id) }}" class="text-decoration-none">
-                            <div class="card h-100 d-flex flex-column justify-content-between" style="width: 220px; height: 220px; background-color: #f0f8ff; border-radius: 20px;">
-                                <div class="card-body text-center d-flex flex-column justify-content-center">
-                                    <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Project Icon" class="img-fluid mb-2 mx-auto" loading="lazy" style="max-width: 150px; border-radius: 20px;">
-                                    <h5 class="card-title text-truncate" style="max-width: 100%;" title="{{ project.name_project }}">{{ project.name[:10] }}{% if project.name|length > 10 %}...{% endif %}</h5>
+                            <div class="card h-100 project-card shadow-sm border-0" style="border-radius: 15px; overflow: hidden; transition: all 0.3s ease;">
+                                <div class="position-relative">
+                                    {% if project.image %}
+                                    <img src="{{ project.image }}" alt="{{ project.name }}" class="card-img-top project-image" style="height: 140px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 140px;">
+                                        <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Project Icon" class="img-fluid" style="max-height: 80px; max-width: 80%;">
+                                    </div>
+                                    {% endif %}
+                                    <div class="position-absolute" style="top: 10px; right: 10px;">
+                                        <span class="badge badge-pill badge-primary">Active</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title font-weight-bold text-truncate mb-1" title="{{ project.name }}">
+                                        {{ project.name }}
+                                    </h5>
+                                    <p class="text-muted small mb-2">
+                                        <i class="material-icons-outlined" style="font-size: 14px; vertical-align: middle;">calendar_today</i>
+                                        {% if project.start_date %}
+                                            {{ project.start_date.strftime('%d %b %Y') if project.start_date else 'Non définie' }}
+                                        {% else %}
+                                            Date non définie
+                                        {% endif %}
+                                    </p>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     {% endfor %}
                 </div>
+                
+                <!-- Add empty state if no projects -->
+                {% if not projects %}
+                <div class="text-center py-5">
+                    <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="No Projects" class="img-fluid mb-3" style="max-width: 120px; opacity: 0.5;">
+                    <h4 class="text-muted">Aucun projet trouvé</h4>
+                    <p class="text-muted">Commencez par créer votre premier projet</p>
+                    <button class="btn btn-primary mt-2" data-toggle="modal" data-target="#addProjectModal">
+                        <i class="material-icons-outlined mr-2">add_circle_outline</i> Créer un projet
+                    </button>
+                </div>
+                {% endif %}
+                
+                <!-- Pagination -->
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center mt-4">
                         {% if prev_url %}
@@ -58,45 +113,79 @@
     </div>
 </div>
 
-<!-- Add Project Modal -->
+<!-- Updated Add Project Modal -->
 <div class="modal fade" id="addProjectModal" tabindex="-1" role="dialog" aria-labelledby="addProjectModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius: 20px;">
-            <div class="modal-header">
-                <div class="text-center w-100">
-                    <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Icon" class="img-fluid mb-4" style="max-width: 200px; border-radius: 20px;">
-                    <h5 class="modal-title mt-2" id="addProjectModalLabel"><strong>Démarrez votre aventure avec Mashru3</strong></h5>
-                </div>
+        <div class="modal-content" style="border-radius: 20px; border: none;">
+            <div class="modal-header border-0">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <form action="/add_project" method="POST">
+            <div class="modal-body text-center px-4 pt-0">
+                <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="Icon" class="img-fluid mb-3" style="max-width: 100px;">
+                <h4 class="modal-title font-weight-bold" id="addProjectModalLabel">Démarrez votre aventure avec Mashru3</h4>
+                <p class="text-muted mb-4">Créez un nouveau projet pour commencer à collaborer</p>
+                
+                <form action="/add_project" method="POST" class="text-left">
                     <div class="form-group">
-                        <label for="name">Nom du Projet:</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
+                        <label for="name" class="font-weight-bold">Nom du Projet:</label>
+                        <input type="text" class="form-control" id="name" name="name" required placeholder="Entrez le nom du projet">
                     </div>
                     <div class="form-group">
-                        <label for="description">Description:</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        <label for="description" class="font-weight-bold">Description:</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required placeholder="Décrivez votre projet"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="image">URL de l'image:</label>
-                        <input type="text" class="form-control" id="image" name="image">
+                        <label for="image" class="font-weight-bold">URL de l'image:</label>
+                        <input type="text" class="form-control" id="image" name="image" placeholder="https://example.com/image.jpg">
                     </div>
-                    <div class="form-group">
-                        <label for="start_date">Date de Début:</label>
-                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="start_date" class="font-weight-bold">Date de Début:</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="end_date" class="font-weight-bold">Date de Fin:</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="end_date">Date de Fin:</label>
-                        <input type="date" class="form-control" id="end_date" name="end_date" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Ajouter</button>
+                    <button type="submit" class="btn btn-primary btn-block py-2 mt-4">Créer le Projet</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    .page-link {
+        color: #007bff;
+        border-radius: 5px;
+        margin: 0 3px;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+    
+    .form-control {
+        border-radius: 10px;
+        padding: 10px 15px;
+    }
+    
+    .btn {
+        border-radius: 10px;
+        font-weight: 500;
+    }
+</style>
 {% endblock %}
