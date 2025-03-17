@@ -102,6 +102,18 @@ class Assigned(db.Model):
     note = db.Column(db.Text)
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
+# Notification table
+class Notification(db.Model):
+    notification_id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=True)
+    notification_type = db.Column(db.String(50), nullable=False)  # 'invitation', 'mention', etc.
+    content = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    is_accepted = db.Column(db.Boolean, nullable=True)  # For invitations: True=accepted, False=rejected, None=pending
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
+
 # Ensure the database and tables are created
 with app.app_context():
     create_database()  # Ensure database exists
@@ -356,16 +368,161 @@ def add_member():
     data = request.get_json()
     user = User.query.filter_by(email=data['email']).first()
     if user:
-        new_participate = Participate(
+        # Check if user is already a member of the project
+        existing_participation = Participate.query.filter_by(
             user_id=user.user_id,
+            project_id=data['project_id']
+        ).first()
+        
+        # Check if there's already a pending invitation
+        existing_invitation = Notification.query.filter_by(
+            recipient_id=user.user_id,
             project_id=data['project_id'],
-            role=data['role']
-        )
-        db.session.add(new_participate)
-        db.session.commit()
-        return {'message': 'Member added successfully'}, 200
+            notification_type='invitation',
+            is_accepted=None
+        ).first()
+        
+        if existing_participation:
+            return {'message': 'User is already a member of this project'}, 400
+        elif existing_invitation:
+            return {'message': 'An invitation has already been sent to this user'}, 400
+        else:
+            # Get project and sender information
+            project = Project.query.get(data['project_id'])
+            sender = User.query.get(session['user_id'])
+            
+            # Create a notification (invitation)
+            new_notification = Notification(
+                recipient_id=user.user_id,
+                sender_id=session['user_id'],
+                project_id=data['project_id'],
+                notification_type='invitation',
+                content=f"{sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.",
+                is_read=False,
+                is_accepted=None  # Pending
+            )
+            
+            # Store the role in the content as JSON or in a separate column if needed
+            # For now, adding it to the content message
+            
+            db.session.add(new_notification)
+            db.session.commit()
+            
+            # Send an email notification if needed (optional)
+            try:
+                msg = Message('Invitation à un projet', 
+                              sender=app.config['MAIL_USERNAME'], 
+                              recipients=[user.email])
+                msg.body = f"""
+                Bonjour {user.name},
+                
+                {sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.
+                
+                Connectez-vous à votre compte pour accepter ou refuser cette invitation.
+                """
+                mail.send(msg)
+            except Exception as e:
+                print(f"Error sending email: {str(e)}")
+                
+            return {'message': 'Invitation sent successfully'}, 200
     else:
         return {'message': 'User not found'}, 404
+
+@app.route('/notifications')
+def notifications():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    notifications = Notification.query.filter_by(recipient_id=user_id).order_by(Notification.created_at.desc()).all()
+    
+    # For each notification, get sender and project information
+    for notification in notifications:
+        notification.sender = User.query.get(notification.sender_id)
+        if notification.project_id:
+            notification.project = Project.query.get(notification.project_id)
+    
+    return render_template('notifications.html', notifications=notifications)
+
+@app.route('/notification_count')
+def notification_count():
+    if 'user_id' not in session:
+        return jsonify({'count': 0}), 401
+    
+    user_id = session['user_id']
+    count = Notification.query.filter_by(recipient_id=user_id, is_read=False).count()
+    
+    return jsonify({'count': count})
+
+@app.route('/respond_invitation', methods=['POST'])
+def respond_invitation():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    notification_id = data.get('notification_id')
+    response = data.get('response')  # 'accept' or 'reject'
+    
+    notification = Notification.query.get(notification_id)
+    
+    if not notification or notification.recipient_id != session['user_id']:
+        return jsonify({'success': False, 'message': 'Invitation not found or not authorized'}), 404
+    
+    if notification.notification_type != 'invitation' or notification.is_accepted is not None:
+        return jsonify({'success': False, 'message': 'Invalid invitation status'}), 400
+    
+    try:
+        if response == 'accept':
+            # Add user to project
+            new_participate = Participate(
+                user_id=notification.recipient_id,
+                project_id=notification.project_id,
+                role=data.get('role', 'Member')  # Default role is Member if not specified
+            )
+            db.session.add(new_participate)
+            notification.is_accepted = True
+            
+        else:  # reject
+            notification.is_accepted = False
+        
+        notification.is_read = True
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Invitation {response}ed successfully'})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
+def mark_notification_read(notification_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    notification = Notification.query.get(notification_id)
+    
+    if not notification or notification.recipient_id != session['user_id']:
+        return jsonify({'success': False, 'message': 'Notification not found or not authorized'}), 404
+    
+    try:
+        notification.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Add notification data to user context
+@app.context_processor
+def inject_notifications_data():
+    """Add notification count to all templates"""
+    if 'user_id' in session:
+        unread_count = Notification.query.filter_by(
+            recipient_id=session['user_id'], 
+            is_read=False
+        ).count()
+        return {'notification_count': unread_count}
+    return {'notification_count': 0}
 
 @app.route('/assign_user', methods=['POST'])
 def assign_user():

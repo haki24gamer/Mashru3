@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Notifications</h5>
+                </div>
+                <div class="card-body">
+                    {% if notifications %}
+                        <div class="list-group">
+                            {% for notification in notifications %}
+                                <div class="list-group-item list-group-item-action {% if not notification.is_read %}active{% endif %}" id="notification-{{ notification.notification_id }}">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">
+                                            {% if notification.notification_type == 'invitation' %}
+                                                Invitation au Projet
+                                            {% else %}
+                                                Notification
+                                            {% endif %}
+                                        </h5>
+                                        <small>{{ notification.created_at }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ notification.content }}</p>
+                                    
+                                    {% if notification.notification_type == 'invitation' and notification.is_accepted is none %}
+                                        <div class="mt-2 invitation-actions">
+                                            <button class="btn btn-success btn-sm accept-invitation" 
+                                                    data-notification-id="{{ notification.notification_id }}"
+                                                    data-project-id="{{ notification.project_id }}">
+                                                Accepter
+                                            </button>
+                                            <button class="btn btn-danger btn-sm reject-invitation"
+                                                    data-notification-id="{{ notification.notification_id }}">
+                                                Refuser
+                                            </button>
+                                        </div>
+                                    {% elif notification.notification_type == 'invitation' %}
+                                        <div class="mt-2">
+                                            {% if notification.is_accepted %}
+                                                <span class="badge bg-success">Invitation acceptée</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Invitation refusée</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if not notification.is_read %}
+                                        <button class="btn btn-sm btn-link mark-read" 
+                                                data-notification-id="{{ notification.notification_id }}">
+                                            Marquer comme lu
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center">Vous n'avez pas de notifications.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Accept invitation
+    document.querySelectorAll('.accept-invitation').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.getAttribute('data-notification-id');
+            const projectId = this.getAttribute('data-project-id');
+            
+            fetch('/respond_invitation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notification_id: notificationId,
+                    response: 'accept',
+                    role: 'Member' // Default role
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const notificationItem = document.getElementById(`notification-${notificationId}`);
+                    const actionsDiv = notificationItem.querySelector('.invitation-actions');
+                    actionsDiv.innerHTML = '<span class="badge bg-success">Invitation acceptée</span>';
+                    
+                    // Optionally redirect to the project
+                    if (projectId) {
+                        window.location.href = `/project/${projectId}`;
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Une erreur est survenue lors du traitement de votre demande.');
+            });
+        });
+    });
+    
+    // Reject invitation
+    document.querySelectorAll('.reject-invitation').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.getAttribute('data-notification-id');
+            
+            if (confirm('Êtes-vous sûr de vouloir refuser cette invitation?')) {
+                fetch('/respond_invitation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        notification_id: notificationId,
+                        response: 'reject'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const notificationItem = document.getElementById(`notification-${notificationId}`);
+                        const actionsDiv = notificationItem.querySelector('.invitation-actions');
+                        actionsDiv.innerHTML = '<span class="badge bg-danger">Invitation refusée</span>';
+                    } else {
+                        alert('Erreur: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Une erreur est survenue lors du traitement de votre demande.');
+                });
+            }
+        });
+    });
+    
+    // Mark as read
+    document.querySelectorAll('.mark-read').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.getAttribute('data-notification-id');
+            
+            fetch(`/mark_notification_read/${notificationId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const notificationItem = document.getElementById(`notification-${notificationId}`);
+                    notificationItem.classList.remove('active');
+                    this.remove();
+                    
+                    // Update notification count in navbar
+                    updateNotificationCount();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    function updateNotificationCount() {
+        fetch('/notification_count')
+            .then(response => response.json())
+            .then(data => {
+                const countElement = document.getElementById('notification-count');
+                if (countElement) {
+                    if (data.count > 0) {
+                        countElement.textContent = data.count;
+                        countElement.style.display = 'inline-block';
+                    } else {
+                        countElement.style.display = 'none';
+                    }
+                }
+            });
+    }
+});
+</script>
+{% endblock %}
