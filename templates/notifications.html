@@ -6,60 +6,99 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Notifications</h5>
-                </div>
-                <div class="card-body">
+            <div class="card shadow-lg border-0 rounded-3">
+                <div class="card-header bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-bell me-2"></i>Notifications</h4>
                     {% if notifications %}
-                        <div class="list-group">
+                        <button id="mark-all-read" class="btn btn-sm btn-light">
+                            <i class="fas fa-check-double me-1"></i>Tout marquer comme lu
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if notifications %}
+                        <div class="notification-list">
                             {% for notification in notifications %}
-                                <div class="list-group-item list-group-item-action {% if not notification.is_read %}active{% endif %}" id="notification-{{ notification.notification_id }}">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h5 class="mb-1">
+                                <div class="notification-item p-3 border-bottom {% if not notification.is_read %}unread{% endif %}" 
+                                     id="notification-{{ notification.notification_id }}">
+                                    <div class="d-flex">
+                                        <div class="notification-icon me-3">
                                             {% if notification.notification_type == 'invitation' %}
-                                                Invitation au Projet
+                                                <div class="icon-circle bg-primary text-white">
+                                                    <i class="fas fa-user-plus"></i>
+                                                </div>
+                                            {% elif notification.notification_type == 'task_assignment' %}
+                                                <div class="icon-circle bg-success text-white">
+                                                    <i class="fas fa-tasks"></i>
+                                                </div>
                                             {% else %}
-                                                Notification
+                                                <div class="icon-circle bg-info text-white">
+                                                    <i class="fas fa-info"></i>
+                                                </div>
                                             {% endif %}
-                                        </h5>
-                                        <small>{{ notification.created_at }}</small>
+                                        </div>
+                                        <div class="notification-content flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="mb-0 fw-bold">
+                                                    {% if notification.notification_type == 'invitation' %}
+                                                        Invitation au Projet
+                                                    {% elif notification.notification_type == 'task_assignment' %}
+                                                        Assignation de Tâche
+                                                    {% else %}
+                                                        Notification
+                                                    {% endif %}
+                                                </h6>
+                                                <small class="text-muted">{{ notification.created_at }}</small>
+                                            </div>
+                                            <p class="mb-2 notification-text">{{ notification.content }}</p>
+                                            
+                                            {% if notification.notification_type == 'invitation' and notification.is_accepted is none %}
+                                                <div class="mt-3 invitation-actions">
+                                                    <button class="btn btn-success btn-sm accept-invitation" 
+                                                            data-notification-id="{{ notification.notification_id }}"
+                                                            data-project-id="{{ notification.project_id }}">
+                                                        <i class="fas fa-check me-1"></i>Accepter
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm reject-invitation"
+                                                            data-notification-id="{{ notification.notification_id }}">
+                                                        <i class="fas fa-times me-1"></i>Refuser
+                                                    </button>
+                                                </div>
+                                            {% elif notification.notification_type == 'invitation' %}
+                                                <div class="mt-2">
+                                                    {% if notification.is_accepted %}
+                                                        <span class="badge bg-success rounded-pill">
+                                                            <i class="fas fa-check me-1"></i>Invitation acceptée
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger rounded-pill">
+                                                            <i class="fas fa-times me-1"></i>Invitation refusée
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% if not notification.is_read %}
+                                                <div class="mt-2">
+                                                    <button class="btn btn-sm btn-outline-primary mark-read" 
+                                                            data-notification-id="{{ notification.notification_id }}">
+                                                        <i class="fas fa-check me-1"></i>Marquer comme lu
+                                                    </button>
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                    <p class="mb-1">{{ notification.content }}</p>
-                                    
-                                    {% if notification.notification_type == 'invitation' and notification.is_accepted is none %}
-                                        <div class="mt-2 invitation-actions">
-                                            <button class="btn btn-success btn-sm accept-invitation" 
-                                                    data-notification-id="{{ notification.notification_id }}"
-                                                    data-project-id="{{ notification.project_id }}">
-                                                Accepter
-                                            </button>
-                                            <button class="btn btn-danger btn-sm reject-invitation"
-                                                    data-notification-id="{{ notification.notification_id }}">
-                                                Refuser
-                                            </button>
-                                        </div>
-                                    {% elif notification.notification_type == 'invitation' %}
-                                        <div class="mt-2">
-                                            {% if notification.is_accepted %}
-                                                <span class="badge bg-success">Invitation acceptée</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">Invitation refusée</span>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                    
-                                    {% if not notification.is_read %}
-                                        <button class="btn btn-sm btn-link mark-read" 
-                                                data-notification-id="{{ notification.notification_id }}">
-                                            Marquer comme lu
-                                        </button>
-                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <p class="text-center">Vous n'avez pas de notifications.</p>
+                        <div class="text-center p-5">
+                            <div class="mb-4">
+                                <i class="fas fa-bell-slash fa-4x text-muted"></i>
+                            </div>
+                            <h5>Vous n'avez pas de notifications</h5>
+                            <p class="text-muted">Les notifications apparaîtront ici lorsque vous recevrez des invitations ou serez assigné à des tâches.</p>
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -67,8 +106,66 @@
     </div>
 </div>
 
+<style>
+.icon-circle {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.notification-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.notification-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.notification-item.unread {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-left: 3px solid #0d6efd;
+}
+
+.notification-text {
+    color: #555;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .icon-circle {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+    }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Mark all as read button
+    const markAllReadBtn = document.getElementById('mark-all-read');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function() {
+            if (confirm('Marquer toutes les notifications comme lues?')) {
+                const unreadNotifications = document.querySelectorAll('.notification-item.unread');
+                unreadNotifications.forEach(item => {
+                    const notificationId = item.id.replace('notification-', '');
+                    markAsRead(notificationId, item);
+                });
+            }
+        });
+    }
+
     // Accept invitation
     document.querySelectorAll('.accept-invitation').forEach(button => {
         button.addEventListener('click', function() {
@@ -91,13 +188,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     const notificationItem = document.getElementById(`notification-${notificationId}`);
                     const actionsDiv = notificationItem.querySelector('.invitation-actions');
-                    actionsDiv.innerHTML = '<span class="badge bg-success">Invitation acceptée</span>';
+                    actionsDiv.innerHTML = '<span class="badge bg-success rounded-pill"><i class="fas fa-check me-1"></i>Invitation acceptée</span>';
+                    notificationItem.classList.remove('unread');
                     
                     // Optionally redirect to the project
                     if (projectId) {
                         window.location.href = `/project/${projectId}`;
                     } else {
-                        location.reload();
+                        updateNotificationCount();
                     }
                 } else {
                     alert('Erreur: ' + data.message);
@@ -131,7 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.success) {
                         const notificationItem = document.getElementById(`notification-${notificationId}`);
                         const actionsDiv = notificationItem.querySelector('.invitation-actions');
-                        actionsDiv.innerHTML = '<span class="badge bg-danger">Invitation refusée</span>';
+                        actionsDiv.innerHTML = '<span class="badge bg-danger rounded-pill"><i class="fas fa-times me-1"></i>Invitation refusée</span>';
+                        notificationItem.classList.remove('unread');
+                        updateNotificationCount();
                     } else {
                         alert('Erreur: ' + data.message);
                     }
@@ -148,26 +248,28 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.mark-read').forEach(button => {
         button.addEventListener('click', function() {
             const notificationId = this.getAttribute('data-notification-id');
-            
-            fetch(`/mark_notification_read/${notificationId}`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const notificationItem = document.getElementById(`notification-${notificationId}`);
-                    notificationItem.classList.remove('active');
-                    this.remove();
-                    
-                    // Update notification count in navbar
-                    updateNotificationCount();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            const notificationItem = document.getElementById(`notification-${notificationId}`);
+            markAsRead(notificationId, notificationItem);
         });
     });
+    
+    function markAsRead(notificationId, notificationItem) {
+        fetch(`/mark_notification_read/${notificationId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                notificationItem.classList.remove('unread');
+                const markReadBtn = notificationItem.querySelector('.mark-read');
+                if (markReadBtn) markReadBtn.parentElement.remove();
+                updateNotificationCount();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
     
     function updateNotificationCount() {
         fetch('/notification_count')

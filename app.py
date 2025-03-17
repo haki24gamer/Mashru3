@@ -533,12 +533,35 @@ def assign_user():
     task_id = data['task_id']
     note = data.get('note', '')
 
+    # Get task and project information
+    task = Task.query.get(task_id)
+    if not task:
+        return {'message': 'Task not found'}, 404
+        
+    project = Project.query.get(task.project_id)
+    assigner = User.query.get(session['user_id'])  # Person doing the assignment
+
     for user_id in user_ids:
         # Check if the user is already assigned to the task
         existing_assignment = Assigned.query.filter_by(user_id=user_id, task_id=task_id).first()
         if not existing_assignment:
             new_assignment = Assigned(user_id=user_id, task_id=task_id, note=note)
             db.session.add(new_assignment)
+            
+            # Create notification for the user
+            notification_content = f"{assigner.name} vous a assigné à la tâche '{task.title}' dans le projet '{project.name}'."
+            if note:
+                notification_content += f" Note: {note}"
+                
+            new_notification = Notification(
+                recipient_id=user_id,
+                sender_id=session['user_id'],
+                project_id=task.project_id,
+                notification_type='task_assignment',
+                content=notification_content,
+                is_read=False
+            )
+            db.session.add(new_notification)
 
     db.session.commit()
     return {'message': 'User(s) assigned successfully'}, 200
