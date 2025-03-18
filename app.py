@@ -1147,6 +1147,17 @@ def get_calendar_events():
     
     return jsonify({'success': True, 'events': events})
 
+@app.route('/groupes')
+def groupes():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    
+    # Here you would typically fetch the user's groups from the database
+    # For now, we'll just render a template
+    return render_template('groupes.html')
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
