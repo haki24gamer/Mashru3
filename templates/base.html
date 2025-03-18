@@ -126,20 +126,20 @@
             <ul class="list-unstyled flex-grow-1">
                 <li class="{% if request.endpoint == 'dashboard' %}active{% endif %}"><a href="{{ url_for('dashboard') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">home</i> Page d’accueil</a></li>
                 <li class="{% if request.endpoint == 'projects' %}active{% endif %}"><a href="{{ url_for('projects') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">folder</i> Mes Projets</a></li>
-                <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">calendar_today</i> Calendrier</a></li>
-                                <!-- Add this to your navigation menu in the appropriate location -->
-                                <li class="nav-item">
-                                    <a class="d-flex align-items-center text-dark" href="{{ url_for('notifications') }}">
-                                        <i class="material-icons-outlined">chat_bubble_outline</i> Notifications
-                                        {% if notification_count > 0 %}
-                                            <span id="notification-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                                {{ notification_count }}
-                                            </span>
-                                        {% else %}
-                                            <span id="notification-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;"></span>
-                                        {% endif %}
-                                    </a>
-                                </li>
+                <li class="{% if request.endpoint == 'calendrier' %}active{% endif %}"><a href="{{ url_for('calendrier') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">calendar_today</i> Calendrier</a></li>
+                <!-- Add this to your navigation menu in the appropriate location -->
+                <li class="nav-item">
+                    <a class="d-flex align-items-center text-dark" href="{{ url_for('notifications') }}">
+                        <i class="material-icons-outlined">chat_bubble_outline</i> Notifications
+                        {% if notification_count > 0 %}
+                            <span id="notification-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ notification_count }}
+                            </span>
+                        {% else %}
+                            <span id="notification-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;"></span>
+                        {% endif %}
+                    </a>
+                </li>
                 <li><a href="#" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">group</i> Mes Groupes</a></li>
                 <li class="{% if request.endpoint == 'parametre' %}active{% endif %}"><a href="{{ url_for('parametre') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">settings</i> Parametre</a></li>
             </ul>

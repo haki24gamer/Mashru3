@@ -1055,6 +1055,98 @@ def reset_password():
     
     return render_template('reset_password.html', token=token, email=email)
 
+@app.route('/calendrier')
+def calendrier():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    
+    # Get all projects the user participates in
+    projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    
+    return render_template('calendrier.html', projects=projects)
+
+@app.route('/get_calendar_events')
+def get_calendar_events():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    user_id = session['user_id']
+    start_date = request.args.get('start')
+    end_date = request.args.get('end')
+    project_id = request.args.get('project', 'all')
+    priorities = request.args.get('priorities', 'high,medium,low').split(',')
+    
+    # Get projects the user is part of
+    user_projects_query = db.session.query(Project.project_id).join(Participate).filter(
+        Participate.user_id == user_id
+    )
+    
+    # Base query for tasks
+    query = db.session.query(Task, Project.name.label('project_name')).join(
+        Project, Task.project_id == Project.project_id
+    )
+    
+    # Filter by user's projects 
+    query = query.filter(Task.project_id.in_(user_projects_query))
+    
+    # Filter by specific project if requested
+    if project_id != 'all':
+        query = query.filter(Task.project_id == project_id)
+    
+    # Filter by priority
+    if priorities:
+        query = query.filter(Task.priority.in_(priorities))
+    
+    # Filter tasks within date range or without end date
+    if start_date and end_date:
+        # Tasks that overlap with the requested date range
+        query = query.filter(
+            db.or_(
+                # Tasks that end within or after the range
+                db.and_(
+                    Task.start_date != None,
+                    Task.end_date != None,
+                    db.or_(
+                        db.and_(Task.start_date <= end_date, Task.end_date >= start_date),
+                        db.and_(Task.start_date <= end_date, Task.end_date == None)
+                    )
+                ),
+                # Tasks without specific dates
+                db.and_(Task.start_date == None, Task.end_date == None)
+            )
+        )
+    
+    tasks = query.all()
+    
+    events = []
+    for task, project_name in tasks:
+        # Get assignees for this task
+        assignees = db.session.query(User).join(Assigned).filter(
+            Assigned.task_id == task.task_id
+        ).all()
+        
+        assignee_list = [{'id': user.user_id, 'name': user.name} for user in assignees]
+        
+        event = {
+            'id': task.task_id,
+            'title': task.title,
+            'start': task.start_date.isoformat() if task.start_date else None,
+            'end': task.end_date.isoformat() if task.end_date else None,
+            'description': task.description,
+            'priority': task.priority,
+            'status': task.status,
+            'projectId': task.project_id,
+            'projectName': project_name,
+            'assignees': assignee_list
+        }
+        events.append(event)
+    
+    return jsonify({'success': True, 'events': events})
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

@@ -1,0 +1,414 @@
+
+{% extends "base.html" %}
+
+{% block title %}Calendrier{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Calendrier des projets</h1>
+        <div class="d-flex">
+            <div class="dropdown me-2">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="projectFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">folder</i> 
+                    Filtrer par projet
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="projectFilterDropdown">
+                    <li><a class="dropdown-item" href="#" data-project-id="all">Tous les projets</a></li>
+                    <div class="dropdown-divider"></div>
+                    {% for project in projects %}
+                    <li><a class="dropdown-item" href="#" data-project-id="{{ project.project_id }}">{{ project.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="calendarViewDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">calendar_view_month</i>
+                    Vue
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="calendarViewDropdown">
+                    <li><a class="dropdown-item" href="#" data-view="dayGridMonth">Mois</a></li>
+                    <li><a class="dropdown-item" href="#" data-view="timeGridWeek">Semaine</a></li>
+                    <li><a class="dropdown-item" href="#" data-view="timeGridDay">Jour</a></li>
+                    <li><a class="dropdown-item" href="#" data-view="listMonth">Liste</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" 
+                     style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
+                    <h6 class="m-0 font-weight-bold text-primary">Légende</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-column">
+                        <div class="legend-item mb-2 d-flex align-items-center">
+                            <span class="legend-color" style="background-color: #4e73df;"></span>
+                            <span class="ms-2">À faire</span>
+                        </div>
+                        <div class="legend-item mb-2 d-flex align-items-center">
+                            <span class="legend-color" style="background-color: #1cc88a;"></span>
+                            <span class="ms-2">En cours</span>
+                        </div>
+                        <div class="legend-item mb-2 d-flex align-items-center">
+                            <span class="legend-color" style="background-color: #36b9cc;"></span>
+                            <span class="ms-2">En révision</span>
+                        </div>
+                        <div class="legend-item d-flex align-items-center">
+                            <span class="legend-color" style="background-color: #1a1a1a;"></span>
+                            <span class="ms-2">Terminée</span>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6 class="font-weight-bold text-secondary mt-3 mb-2">Priorité</h6>
+                    <div class="form-check">
+                        <input class="form-check-input priority-filter" type="checkbox" value="high" id="priorityHigh" checked>
+                        <label class="form-check-label" for="priorityHigh">
+                            <span class="badge bg-danger">Haute</span>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input priority-filter" type="checkbox" value="medium" id="priorityMedium" checked>
+                        <label class="form-check-label" for="priorityMedium">
+                            <span class="badge bg-warning">Moyenne</span>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input priority-filter" type="checkbox" value="low" id="priorityLow" checked>
+                        <label class="form-check-label" for="priorityLow">
+                            <span class="badge bg-success">Basse</span>
+                        </label>
+                    </div>
+                    
+                    <hr>
+                    
+                    <button id="refreshCalendar" class="btn btn-primary w-100">
+                        <i class="material-icons-outlined" style="font-size: 16px; vertical-align: middle;">refresh</i>
+                        Actualiser
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Task Detail Modal -->
+    <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskModalLabel">Détails de la tâche</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fw-bold">Projet:</label>
+                        <span id="taskProject"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Description:</label>
+                        <p id="taskDescription" class="mb-2"></p>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="fw-bold">Priorité:</label>
+                            <span id="taskPriority"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold">Statut:</label>
+                            <span id="taskStatus"></span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="fw-bold">Date de début:</label>
+                            <div id="taskStartDate"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold">Date de fin:</label>
+                            <div id="taskEndDate"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold">Assigné à:</label>
+                        <div id="taskAssignees"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <a href="#" id="viewTaskLink" class="btn btn-primary">Voir détails</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include FullCalendar library -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
+
+<style>
+    .fc-event {
+        cursor: pointer;
+    }
+    .legend-color {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+    }
+    .priority-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .fc-list-event-dot {
+        border-radius: 50% !important;
+    }
+    .fc .fc-toolbar-title {
+        font-size: 1.5rem;
+    }
+    .fc-event-time {
+        font-weight: bold;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedProjectId = 'all';
+    let selectedPriorities = ['high', 'medium', 'low'];
+    let calendarView = 'dayGridMonth';
+    
+    // Initialize calendar
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: calendarView,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: ''
+        },
+        locale: 'fr',
+        firstDay: 1, // Monday
+        height: 'auto',
+        eventTimeFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        },
+        eventClick: function(info) {
+            showTaskDetails(info.event);
+        },
+        events: function(fetchInfo, successCallback, failureCallback) {
+            fetchEvents(fetchInfo.start, fetchInfo.end, successCallback);
+        }
+    });
+    
+    calendar.render();
+    
+    // Handle project filter change
+    document.querySelectorAll('[data-project-id]').forEach(item => {
+        item.addEventListener('click', event => {
+            event.preventDefault();
+            selectedProjectId = event.target.getAttribute('data-project-id');
+            
+            // Update dropdown button text
+            const btnText = selectedProjectId === 'all' ? 'Tous les projets' : event.target.textContent;
+            document.getElementById('projectFilterDropdown').innerHTML = 
+                `<i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">folder</i> ${btnText}`;
+                
+            refreshCalendar();
+        });
+    });
+    
+    // Handle priority filter change
+    document.querySelectorAll('.priority-filter').forEach(item => {
+        item.addEventListener('change', () => {
+            selectedPriorities = [];
+            document.querySelectorAll('.priority-filter:checked').forEach(checkbox => {
+                selectedPriorities.push(checkbox.value);
+            });
+            refreshCalendar();
+        });
+    });
+    
+    // Handle view change
+    document.querySelectorAll('[data-view]').forEach(item => {
+        item.addEventListener('click', event => {
+            event.preventDefault();
+            calendarView = event.target.getAttribute('data-view');
+            calendar.changeView(calendarView);
+            
+            // Update dropdown button text
+            let viewText = 'Mois';
+            switch(calendarView) {
+                case 'timeGridWeek': viewText = 'Semaine'; break;
+                case 'timeGridDay': viewText = 'Jour'; break;
+                case 'listMonth': viewText = 'Liste'; break;
+            }
+            
+            document.getElementById('calendarViewDropdown').innerHTML = 
+                `<i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">calendar_view_month</i> ${viewText}`;
+        });
+    });
+    
+    // Handle refresh button
+    document.getElementById('refreshCalendar').addEventListener('click', refreshCalendar);
+    
+    function refreshCalendar() {
+        calendar.refetchEvents();
+    }
+    
+    function fetchEvents(start, end, successCallback) {
+        // Convert to YYYY-MM-DD format for API
+        const startDate = start.toISOString().split('T')[0];
+        const endDate = end.toISOString().split('T')[0];
+        
+        // Make AJAX call to get events
+        fetch(`/get_calendar_events?start=${startDate}&end=${endDate}&project=${selectedProjectId}&priorities=${selectedPriorities.join(',')}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const events = data.events.map(event => {
+                        // Set color based on status
+                        let backgroundColor;
+                        switch (event.status) {
+                            case 'TODO': backgroundColor = '#4e73df'; break; // Blue
+                            case 'IN_PROGRESS': backgroundColor = '#1cc88a'; break; // Green
+                            case 'REVIEW': backgroundColor = '#36b9cc'; break; // Cyan
+                            case 'DONE': backgroundColor = '#1a1a1a'; break; // Black
+                            default: backgroundColor = '#6c757d'; // Gray
+                        }
+                        
+                        // Apply a border for priority
+                        let borderColor;
+                        switch (event.priority) {
+                            case 'high': borderColor = '#e74a3b'; break; // Red
+                            case 'medium': borderColor = '#f6c23e'; break; // Yellow
+                            case 'low': borderColor = '#1cc88a'; break; // Green
+                            default: borderColor = backgroundColor;
+                        }
+                        
+                        return {
+                            id: event.id,
+                            title: event.title,
+                            start: event.start,
+                            end: event.end,
+                            backgroundColor: backgroundColor,
+                            borderColor: borderColor,
+                            borderWidth: 2,
+                            extendedProps: {
+                                description: event.description,
+                                projectId: event.projectId,
+                                projectName: event.projectName,
+                                priority: event.priority,
+                                status: event.status,
+                                assignees: event.assignees
+                            }
+                        };
+                    });
+                    successCallback(events);
+                } else {
+                    console.error("Failed to fetch events:", data.message);
+                    successCallback([]);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching calendar events:', error);
+                successCallback([]);
+            });
+    }
+    
+    function showTaskDetails(event) {
+        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+        const taskId = event.id;
+        const props = event.extendedProps;
+        
+        // Update modal content
+        document.getElementById('taskModalLabel').textContent = event.title;
+        document.getElementById('taskProject').textContent = props.projectName;
+        document.getElementById('taskDescription').textContent = props.description || 'Aucune description';
+        
+        // Format priority
+        let priorityHTML = '';
+        switch (props.priority) {
+            case 'high': 
+                priorityHTML = '<span class="badge bg-danger">Haute</span>'; 
+                break;
+            case 'medium': 
+                priorityHTML = '<span class="badge bg-warning">Moyenne</span>'; 
+                break;
+            case 'low': 
+                priorityHTML = '<span class="badge bg-success">Basse</span>'; 
+                break;
+        }
+        document.getElementById('taskPriority').innerHTML = priorityHTML;
+        
+        // Format status
+        let statusHTML = '';
+        switch (props.status) {
+            case 'TODO': 
+                statusHTML = '<span class="badge bg-secondary">À faire</span>'; 
+                break;
+            case 'IN_PROGRESS': 
+                statusHTML = '<span class="badge bg-primary">En cours</span>'; 
+                break;
+            case 'REVIEW': 
+                statusHTML = '<span class="badge bg-info">En révision</span>'; 
+                break;
+            case 'DONE': 
+                statusHTML = '<span class="badge bg-success">Terminée</span>'; 
+                break;
+        }
+        document.getElementById('taskStatus').innerHTML = statusHTML;
+        
+        // Format dates
+        document.getElementById('taskStartDate').textContent = formatDate(event.start);
+        document.getElementById('taskEndDate').textContent = formatDate(event.end);
+        
+        // Show assignees
+        const assigneesContainer = document.getElementById('taskAssignees');
+        assigneesContainer.innerHTML = '';
+        
+        if (props.assignees && props.assignees.length > 0) {
+            props.assignees.forEach(assignee => {
+                const assigneeEl = document.createElement('div');
+                assigneeEl.classList.add('mb-1');
+                assigneeEl.textContent = assignee.name;
+                assigneesContainer.appendChild(assigneeEl);
+            });
+        } else {
+            assigneesContainer.textContent = 'Aucune personne assignée';
+        }
+        
+        // Update view details link
+        document.getElementById('viewTaskLink').href = `/project/${props.projectId}?task=${taskId}`;
+        
+        modal.show();
+    }
+    
+    function formatDate(date) {
+        if (!date) return 'Non défini';
+        return new Date(date).toLocaleDateString('fr-FR', {
+            day: '2-digit', 
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+});
+</script>
+{% endblock %}
