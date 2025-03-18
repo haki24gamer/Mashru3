@@ -208,6 +208,56 @@
     </div>
 </div>
 
+<!-- Chatbot Button -->
+<div class="chatbot-button-container">
+    <button id="chatbotButton" class="btn btn-primary rounded-circle chatbot-btn shadow-lg">
+        <i class="material-icons-outlined">smart_toy</i>
+    </button>
+</div>
+
+<!-- Chatbot Modal -->
+<div class="modal fade" id="chatbotModal" tabindex="-1" aria-labelledby="chatbotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chatbotModalLabel">Assistant IA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="chatbot-container">
+                    <div class="chatbot-messages" id="chatbotMessages">
+                        <div class="message bot-message">
+                            <div class="message-content">
+                                <p>Bonjour ! Je suis votre assistant IA. Je peux vous aider à :</p>
+                                <ul>
+                                    <li>Générer des tâches pour votre projet</li>
+                                    <li>Créer un cahier des charges</li>
+                                    <li>Organiser votre projet</li>
+                                </ul>
+                                <p>Comment puis-je vous aider aujourd'hui ?</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chatbot-input">
+                        <form id="chatbotForm" class="d-flex">
+                            <select id="projectSelector" class="form-select me-2" style="max-width: 200px;">
+                                <option value="">Sélectionner un projet</option>
+                                {% for project in user_projects %}
+                                <option value="{{ project.project_id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="text" id="userMessage" class="form-control me-2" placeholder="Tapez votre message ici..." required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="material-icons-outlined">send</i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // Task Status Chart
     var ctxTaskStatus = document.getElementById('taskStatusChart').getContext('2d');
@@ -300,5 +350,310 @@
             }
         }
     });
+    
+    // Chatbot functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatbotButton = document.getElementById('chatbotButton');
+        const chatbotForm = document.getElementById('chatbotForm');
+        const chatbotMessages = document.getElementById('chatbotMessages');
+        const userMessageInput = document.getElementById('userMessage');
+        const projectSelector = document.getElementById('projectSelector');
+        
+        if (chatbotButton) {
+            chatbotButton.addEventListener('click', function() {
+                const chatbotModal = new bootstrap.Modal(document.getElementById('chatbotModal'));
+                chatbotModal.show();
+            });
+        }
+        
+        if (chatbotForm) {
+            chatbotForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const message = userMessageInput.value.trim();
+                const projectId = projectSelector.value;
+                
+                if (message) {
+                    // Add user message to chat
+                    addMessage(message, 'user');
+                    
+                    // Clear input
+                    userMessageInput.value = '';
+                    
+                    // Show loading indicator
+                    addMessage('Je réfléchis...', 'bot', true);
+                    
+                    // Send to backend
+                    fetch('/chatbot', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            project_id: projectId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove loading indicator
+                        removeLoadingMessage();
+                        
+                        // Add response to chat
+                        addMessage(data.response, 'bot');
+                        
+                        // If there are tasks to add
+                        if (data.tasks && data.tasks.length > 0) {
+                            addMessage('Je peux ajouter ces tâches à votre projet. Souhaitez-vous les ajouter maintenant ?', 'bot');
+                            addTaskConfirmation(data.tasks, projectId);
+                        }
+                        
+                        // If there's a specification
+                        if (data.specification) {
+                            addMessage('J\'ai créé un cahier des charges. Souhaitez-vous l\'enregistrer ?', 'bot');
+                            addSpecConfirmation(data.specification, projectId);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        removeLoadingMessage();
+                        addMessage('Désolé, j\'ai rencontré une erreur. Veuillez réessayer.', 'bot');
+                    });
+                }
+            });
+        }
+        
+        function addMessage(text, sender, isLoading = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            if (isLoading) {
+                messageDiv.className += ' loading-message';
+            }
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            if (isLoading) {
+                messageContent.innerHTML = `<p>${text} <span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></p>`;
+            } else {
+                messageContent.innerHTML = `<p>${text}</p>`;
+            }
+            
+            messageDiv.appendChild(messageContent);
+            chatbotMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+        
+        function removeLoadingMessage() {
+            const loadingMessage = chatbotMessages.querySelector('.loading-message');
+            if (loadingMessage) {
+                chatbotMessages.removeChild(loadingMessage);
+            }
+        }
+        
+        function addTaskConfirmation(tasks, projectId) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            let tasksHtml = '<ul class="task-list">';
+            tasks.forEach(task => {
+                tasksHtml += `<li>${task.title} (${task.priority})</li>`;
+            });
+            tasksHtml += '</ul>';
+            
+            const confirmButton = document.createElement('button');
+            confirmButton.className = 'btn btn-sm btn-success me-2';
+            confirmButton.textContent = 'Oui, ajouter ces tâches';
+            confirmButton.onclick = function() {
+                addTasks(tasks, projectId);
+            };
+            
+            const cancelButton = document.createElement('button');
+            cancelButton.className = 'btn btn-sm btn-outline-secondary';
+            cancelButton.textContent = 'Non, merci';
+            
+            messageContent.innerHTML = tasksHtml;
+            messageContent.appendChild(confirmButton);
+            messageContent.appendChild(cancelButton);
+            
+            messageDiv.appendChild(messageContent);
+            chatbotMessages.appendChild(messageDiv);
+            
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+        
+        function addSpecConfirmation(specification, projectId) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            const confirmButton = document.createElement('button');
+            confirmButton.className = 'btn btn-sm btn-success me-2';
+            confirmButton.textContent = 'Oui, enregistrer';
+            confirmButton.onclick = function() {
+                saveSpecification(specification, projectId);
+            };
+            
+            const cancelButton = document.createElement('button');
+            cancelButton.className = 'btn btn-sm btn-outline-secondary';
+            cancelButton.textContent = 'Non, merci';
+            
+            messageContent.innerHTML = `<p><strong>Titre:</strong> ${specification.title}</p>`;
+            messageContent.appendChild(confirmButton);
+            messageContent.appendChild(cancelButton);
+            
+            messageDiv.appendChild(messageContent);
+            chatbotMessages.appendChild(messageDiv);
+            
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+        }
+        
+        function addTasks(tasks, projectId) {
+            fetch('/chatbot/add_tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tasks: tasks,
+                    project_id: projectId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addMessage('Tâches ajoutées avec succès !', 'bot');
+                } else {
+                    addMessage(`Erreur: ${data.message}`, 'bot');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addMessage('Désolé, je n\'ai pas pu ajouter les tâches.', 'bot');
+            });
+        }
+        
+        function saveSpecification(specification, projectId) {
+            fetch('/chatbot/save_specification', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    specification: specification,
+                    project_id: projectId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addMessage(`Cahier des charges enregistré avec succès ! <a href="/specification/${data.specification_id}" target="_blank">Voir le cahier des charges</a>`, 'bot');
+                } else {
+                    addMessage(`Erreur: ${data.message}`, 'bot');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addMessage('Désolé, je n\'ai pas pu enregistrer le cahier des charges.', 'bot');
+            });
+        }
+    });
 </script>
+
+<style>
+    .chatbot-button-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+    }
+    
+    .chatbot-btn {
+        width: 60px;
+        height: 60px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+    }
+    
+    .chatbot-btn i {
+        font-size: 28px;
+    }
+    
+    .chatbot-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .chatbot-container {
+        display: flex;
+        flex-direction: column;
+        height: 60vh;
+    }
+    
+    .chatbot-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 15px;
+        background-color: #f8f9fc;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+    }
+    
+    .user-message {
+        justify-content: flex-end;
+    }
+    
+    .message-content {
+        padding: 10px 15px;
+        border-radius: 15px;
+        max-width: 80%;
+    }
+    
+    .user-message .message-content {
+        background-color: #4e73df;
+        color: white;
+    }
+    
+    .bot-message .message-content {
+        background-color: #e9ecef;
+        color: #444;
+    }
+    
+    .chatbot-input {
+        padding: 10px 0;
+    }
+    
+    .loading-dots span {
+        animation: loading 1.4s infinite;
+        animation-fill-mode: both;
+    }
+    
+    .loading-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .loading-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes loading {
+        0% { opacity: 0.2; }
+        20% { opacity: 1; }
+        100% { opacity: 0.2; }
+    }
+</style>
 {% endblock %}

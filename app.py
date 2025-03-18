@@ -310,7 +310,8 @@ def dashboard():
         active_projects=active_projects,
         recent_tasks=recent_tasks,
         priority_stats=priority_stats,
-        quote=random_quote  # Pass the random quote to the template
+        quote=random_quote,  # Pass the random quote to the template
+        user_projects=user_projects  # Add this line to pass projects to the template
     )
 
 @app.route('/projects')
