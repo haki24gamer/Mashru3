@@ -9,6 +9,7 @@ from flask_mail import Mail, Message
 import random
 import os  # Add this import
 from datetime import datetime, timedelta
+import time  # Add this import
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
@@ -114,6 +115,23 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     is_accepted = db.Column(db.Boolean, nullable=True)  # For invitations: True=accepted, False=rejected, None=pending
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
+
+# Specification table
+class Specification(db.Model):
+    specification_id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    objectives = db.Column(db.Text)
+    requirements = db.Column(db.Text)
+    constraints = db.Column(db.Text)
+    deliverables = db.Column(db.Text)
+    timeline = db.Column(db.Text)
+    status = db.Column(db.Enum('draft', 'review', 'approved'), default='draft')
+    document_path = db.Column(db.String(255))  # Path to uploaded document if any
+    created_by = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())
+    updated_at = db.Column(db.DATE, server_default=db.func.current_date(), onupdate=db.func.current_date())
 
 # Ensure the database and tables are created
 with app.app_context():
@@ -1157,6 +1175,166 @@ def groupes():
     # Here you would typically fetch the user's groups from the database
     # For now, we'll just render a template
     return render_template('groupes.html')
+
+@app.route('/specifications')
+def specifications():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    
+    # Get user's projects for the dropdown menu
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    
+    # Get existing specifications for the user's projects
+    project_ids = [project.project_id for project in user_projects]
+    
+    specifications_list = []
+    if project_ids:
+        specifications_list = Specification.query.filter(
+            Specification.project_id.in_(project_ids)
+        ).order_by(Specification.updated_at.desc()).all()
+        
+        # Add project name to each specification
+        for spec in specifications_list:
+            project = Project.query.get(spec.project_id)
+            if project:
+                spec.project_name = project.name
+    
+    return render_template('specifications.html', projects=user_projects, specifications=specifications_list)
+
+@app.route('/save_specification', methods=['POST'])
+def save_specification():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    try:
+        # Get form data
+        data = request.form
+        project_id = data.get('project_id')
+        title = data.get('title')
+        
+        # Validate required fields
+        if not project_id or not title:
+            return jsonify({
+                'success': False, 
+                'message': 'Le projet et le titre sont requis'
+            }), 400
+        
+        # Check if the user has access to this project
+        participation = Participate.query.filter_by(
+            user_id=session['user_id'],
+            project_id=project_id
+        ).first()
+        
+        if not participation:
+            return jsonify({
+                'success': False, 
+                'message': 'Vous n\'avez pas accès à ce projet'
+            }), 403
+            
+        # Create new specification
+        new_specification = Specification(
+            project_id=project_id,
+            title=title,
+            description=data.get('description', ''),
+            objectives=data.get('objectives', ''),
+            requirements=data.get('requirements', ''),
+            constraints=data.get('constraints', ''),
+            deliverables=data.get('deliverables', ''),
+            timeline=data.get('timeline', ''),
+            status=data.get('status', 'draft'),
+            created_by=session['user_id']
+        )
+        
+        # Handle file upload if provided
+        if 'document' in request.files:
+            file = request.files['document']
+            if file and file.filename:
+                # Create uploads directory for specifications if it doesn't exist
+                spec_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'specifications')
+                os.makedirs(spec_dir, exist_ok=True)
+                
+                # Save the file
+                filename = secure_filename(f"spec_{int(time.time())}_{file.filename}")
+                filepath = os.path.join(spec_dir, filename)
+                file.save(filepath)
+                
+                # Update specification with document path
+                new_specification.document_path = f"/static/uploads/specifications/{filename}"
+        
+        db.session.add(new_specification)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cahier des charges enregistré avec succès',
+            'specification_id': new_specification.specification_id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de l\'enregistrement: {str(e)}'
+        }), 500
+
+@app.route('/specification/<int:specification_id>')
+def view_specification(specification_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    specification = Specification.query.get_or_404(specification_id)
+    
+    # Check if user has access to the project
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=specification.project_id
+    ).first()
+    
+    if not participation:
+        return "Vous n'avez pas accès à ce cahier des charges", 403
+    
+    # Get project info
+    project = Project.query.get(specification.project_id)
+    
+    return render_template('view_specification.html', 
+                          specification=specification, 
+                          project=project)
+
+@app.route('/edit_specification/<int:specification_id>')
+def edit_specification(specification_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    specification = Specification.query.get_or_404(specification_id)
+    
+    # Check if user has access to the project and spec is in draft mode
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=specification.project_id
+    ).first()
+    
+    if not participation:
+        return "Vous n'avez pas accès à ce cahier des charges", 403
+    
+    if specification.status != 'draft':
+        return "Seuls les cahiers des charges en mode brouillon peuvent être modifiés", 403
+    
+    # Get project info for the form
+    project = Project.query.get(specification.project_id)
+    
+    # Get all projects the user has access to (for the project selector)
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == session['user_id']
+    ).all()
+    
+    return render_template('edit_specification.html', 
+                          specification=specification, 
+                          project=project,
+                          projects=user_projects)
 
 if __name__ == '__main__':
     with app.app_context():
