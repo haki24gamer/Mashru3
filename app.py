@@ -335,9 +335,26 @@ def dashboard():
 def projects():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
+    
     user_id = session['user_id']
     user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
     total_projects = len(user_projects)
+    
+    # Calculate progress for each project
+    for project in user_projects:
+        # Get all tasks for this project
+        tasks = Task.query.filter_by(project_id=project.project_id).all()
+        total_tasks = len(tasks)
+        
+        if total_tasks > 0:
+            # Count completed tasks
+            completed_tasks = Task.query.filter_by(project_id=project.project_id, status='DONE').count()
+            # Calculate percentage
+            project.progress = round((completed_tasks / total_tasks) * 100)
+        else:
+            # No tasks yet
+            project.progress = 0
+    
     return render_template('project.html', projects=user_projects, total_projects=total_projects)
 
 @app.route('/add_project', methods=['GET', 'POST'])
