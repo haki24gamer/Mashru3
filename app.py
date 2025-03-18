@@ -8,6 +8,7 @@ from email.message import EmailMessage
 from flask_mail import Mail, Message
 import random
 import os  # Add this import
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
@@ -975,6 +976,84 @@ def deconnexion():
 @app.route('/')
 def home():
     return redirect(url_for('dashboard'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate a reset token (a random string)
+            reset_token = ''.join(random.choices('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=32))
+            # Store the token in the session with an expiration time
+            session[f'reset_token_{email}'] = {
+                'token': reset_token,
+                'expiry': (datetime.now() + timedelta(hours=1)).timestamp()
+            }
+            
+            # Create the reset link
+            reset_link = url_for('reset_password', token=reset_token, email=email, _external=True)
+            
+            # Send the email
+            try:
+                msg = Message('Réinitialisation de mot de passe', 
+                              sender=app.config['MAIL_USERNAME'], 
+                              recipients=[email])
+                msg.body = f'''Pour réinitialiser votre mot de passe, veuillez cliquer sur le lien suivant:
+                
+{reset_link}
+
+Si vous n'avez pas demandé de réinitialisation de mot de passe, veuillez ignorer ce message.
+
+Ce lien expirera dans 1 heure.
+'''
+                mail.send(msg)
+                return render_template('forgot_password.html', 
+                                      success_message="Un email de réinitialisation a été envoyé à votre adresse email.")
+            except Exception as e:
+                print(f"Error sending email: {str(e)}")
+                return render_template('forgot_password.html', 
+                                      error_message="Impossible d'envoyer l'email. Veuillez réessayer plus tard.")
+        else:
+            # Even if the user doesn't exist, we return a success message for security
+            return render_template('forgot_password.html', 
+                                 success_message="Si cette adresse email existe dans notre base de données, un email de réinitialisation a été envoyé.")
+            
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    token = request.args.get('token')
+    email = request.args.get('email')
+    
+    # Check if token is valid
+    token_data = session.get(f'reset_token_{email}')
+    if not token_data or token_data.get('token') != token or token_data.get('expiry') < datetime.now().timestamp():
+        return render_template('reset_password.html', 
+                             error_message="Ce lien de réinitialisation est invalide ou a expiré.")
+    
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        if new_password != confirm_password:
+            return render_template('reset_password.html', 
+                                 error_message="Les mots de passe ne correspondent pas.",
+                                 token=token,
+                                 email=email)
+        
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.password = generate_password_hash(new_password)
+            db.session.commit()
+            
+            # Clear the reset token
+            session.pop(f'reset_token_{email}', None)
+            
+            return redirect(url_for('connexion', reset_success=True))
+    
+    return render_template('reset_password.html', token=token, email=email)
 
 if __name__ == '__main__':
     with app.app_context():
