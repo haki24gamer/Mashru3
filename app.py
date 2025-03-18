@@ -1336,6 +1336,114 @@ def edit_specification(specification_id):
                           project=project,
                           projects=user_projects)
 
+@app.route('/delete_specification/<int:specification_id>', methods=['POST'])
+def delete_specification(specification_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Non authentifié'}), 401
+    
+    specification = Specification.query.get_or_404(specification_id)
+    
+    # Vérifier si l'utilisateur a accès au projet
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=specification.project_id
+    ).first()
+    
+    if not participation:
+        return jsonify({'success': False, 'message': 'Vous n\'avez pas accès à ce cahier des charges'}), 403
+    
+    # Seuls le créateur, le propriétaire du projet ou un admin peuvent supprimer
+    if specification.created_by != session['user_id'] and participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'Vous n\'avez pas les droits pour supprimer ce document'}), 403
+    
+    try:
+        # Supprimer le document associé si existant
+        if specification.document_path:
+            document_path = os.path.join(app.root_path, 'static', specification.document_path.lstrip('/static/'))
+            if os.path.exists(document_path):
+                os.remove(document_path)
+        
+        # Supprimer la spécification
+        db.session.delete(specification)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Cahier des charges supprimé avec succès'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erreur lors de la suppression: {str(e)}'}), 500
+
+@app.route('/update_specification/<int:specification_id>', methods=['POST'])
+def update_specification(specification_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Non authentifié'}), 401
+    
+    specification = Specification.query.get_or_404(specification_id)
+    
+    # Vérifier si l'utilisateur a accès au projet
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=specification.project_id
+    ).first()
+    
+    if not participation:
+        return jsonify({'success': False, 'message': 'Vous n\'avez pas accès à ce cahier des charges'}), 403
+    
+    # Seuls le créateur, le propriétaire du projet ou un admin peuvent modifier
+    if specification.created_by != session['user_id'] and participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'Vous n\'avez pas les droits pour modifier ce document'}), 403
+    
+    # Seul un cahier en mode brouillon peut être modifié
+    if specification.status != 'draft' and specification.created_by != session['user_id'] and participation.role != 'Owner':
+        return jsonify({'success': False, 'message': 'Seuls les cahiers des charges en mode brouillon peuvent être modifiés'}), 403
+    
+    try:
+        # Récupérer les données du formulaire
+        data = request.form
+        
+        # Mettre à jour les champs de la spécification
+        specification.title = data.get('title', specification.title)
+        specification.description = data.get('description', specification.description)
+        specification.objectives = data.get('objectives', specification.objectives)
+        specification.requirements = data.get('requirements', specification.requirements)
+        specification.constraints = data.get('constraints', specification.constraints)
+        specification.deliverables = data.get('deliverables', specification.deliverables)
+        specification.timeline = data.get('timeline', specification.timeline)
+        specification.status = data.get('status', specification.status)
+        
+        # Gérer le téléchargement du document s'il est fourni
+        if 'document' in request.files:
+            file = request.files['document']
+            if file and file.filename:
+                # Supprimer l'ancien document s'il existe
+                if specification.document_path:
+                    old_document_path = os.path.join(app.root_path, 'static', specification.document_path.lstrip('/static/'))
+                    if os.path.exists(old_document_path):
+                        os.remove(old_document_path)
+                
+                # Créer le répertoire pour les spécifications s'il n'existe pas
+                spec_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'specifications')
+                os.makedirs(spec_dir, exist_ok=True)
+                
+                # Enregistrer le nouveau fichier
+                filename = secure_filename(f"spec_{specification_id}_{int(time.time())}_{file.filename}")
+                filepath = os.path.join(spec_dir, filename)
+                file.save(filepath)
+                
+                # Mettre à jour le chemin du document
+                specification.document_path = f"/static/uploads/specifications/{filename}"
+        
+        # Mettre à jour la date de modification est automatique grâce à onupdate
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cahier des charges mis à jour avec succès'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

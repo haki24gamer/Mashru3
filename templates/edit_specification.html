@@ -1,0 +1,128 @@
+
+{% extends "base.html" %}
+
+{% block title %}Modifier {{ specification.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Modifier le Cahier des Charges</h1>
+        <a href="{{ url_for('view_specification', specification_id=specification.specification_id) }}" class="btn btn-secondary">
+            <i class="material-icons-outlined">arrow_back</i> Retour
+        </a>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Édition du cahier des charges</h6>
+        </div>
+        <div class="card-body">
+            <form id="editSpecificationForm" action="{{ url_for('update_specification', specification_id=specification.specification_id) }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="specTitle" class="form-label">Titre</label>
+                    <input type="text" class="form-control" id="specTitle" name="title" value="{{ specification.title }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specDescription" class="form-label">Description</label>
+                    <textarea class="form-control" id="specDescription" name="description" rows="3">{{ specification.description }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specObjectives" class="form-label">Objectifs</label>
+                    <textarea class="form-control" id="specObjectives" name="objectives" rows="5">{{ specification.objectives }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specRequirements" class="form-label">Exigences fonctionnelles</label>
+                    <textarea class="form-control" id="specRequirements" name="requirements" rows="5">{{ specification.requirements }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specConstraints" class="form-label">Contraintes techniques</label>
+                    <textarea class="form-control" id="specConstraints" name="constraints" rows="5">{{ specification.constraints }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specDeliverables" class="form-label">Livrables</label>
+                    <textarea class="form-control" id="specDeliverables" name="deliverables" rows="5">{{ specification.deliverables }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specTimeline" class="form-label">Calendrier</label>
+                    <textarea class="form-control" id="specTimeline" name="timeline" rows="5">{{ specification.timeline }}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specStatus" class="form-label">Statut</label>
+                    <select class="form-select" id="specStatus" name="status">
+                        <option value="draft" {% if specification.status == 'draft' %}selected{% endif %}>Brouillon</option>
+                        <option value="review" {% if specification.status == 'review' %}selected{% endif %}>En révision</option>
+                        <option value="approved" {% if specification.status == 'approved' %}selected{% endif %}>Approuvé</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="specFile" class="form-label">Document actuel</label>
+                    {% if specification.document_path %}
+                        <div class="d-flex align-items-center mb-2">
+                            <a href="{{ specification.document_path }}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                Voir le document actuel
+                            </a>
+                            <span class="text-muted small">
+                                (Pour remplacer ce document, téléchargez un nouveau fichier ci-dessous)
+                            </span>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-2">Aucun document joint</p>
+                    {% endif %}
+                    <input class="form-control" type="file" id="specFile" name="document">
+                </div>
+                
+                <div class="mt-4 d-flex justify-content-between">
+                    <a href="{{ url_for('view_specification', specification_id=specification.specification_id) }}" class="btn btn-secondary">Annuler</a>
+                    <button type="button" class="btn btn-primary" id="updateSpecification">Enregistrer les modifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gérer le bouton de mise à jour
+        document.getElementById('updateSpecification').addEventListener('click', function() {
+            const form = document.getElementById('editSpecificationForm');
+            
+            // Valider le formulaire
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            // Créer FormData pour gérer le téléchargement de fichier
+            const formData = new FormData(form);
+            
+            // Soumettre le formulaire en AJAX
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.href = "{{ url_for('view_specification', specification_id=specification.specification_id) }}";
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Une erreur est survenue lors de la mise à jour.');
+            });
+        });
+    });
+</script>
+{% endblock %}

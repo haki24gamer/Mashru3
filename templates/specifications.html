@@ -50,7 +50,7 @@
                     <tbody id="specificationsTable">
                         {% if specifications %}
                             {% for spec in specifications %}
-                            <tr>
+                            <tr data-project-id="{{ spec.project_id }}">
                                 <td>{{ spec.title }}</td>
                                 <td>{{ spec.project_name }}</td>
                                 <td>{{ spec.created_at.strftime('%d/%m/%Y') }}</td>
@@ -178,8 +178,34 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Handle project filter change
         document.getElementById('projectFilter').addEventListener('change', function() {
-            // In a real implementation, this would filter the specifications based on project
-            console.log('Filter by project ID:', this.value);
+            const selectedProjectId = this.value;
+            const tableRows = document.querySelectorAll('#specificationsTable tr');
+            
+            // Show/hide rows based on selected project
+            tableRows.forEach(row => {
+                // Skip header row or rows with no data attributes
+                if (!row.dataset.projectId) return;
+                
+                if (selectedProjectId === 'all' || row.dataset.projectId === selectedProjectId) {
+                    row.style.display = '';  // Show row
+                } else {
+                    row.style.display = 'none';  // Hide row
+                }
+            });
+            
+            // Show message if no specifications are visible
+            const visibleRows = document.querySelectorAll('#specificationsTable tr:not([style="display: none;"])');
+            const noSpecsRow = document.getElementById('noSpecificationsRow');
+            
+            if (visibleRows.length === 0 && !noSpecsRow) {
+                const tbody = document.getElementById('specificationsTable');
+                const newRow = document.createElement('tr');
+                newRow.id = 'noSpecificationsRow';
+                newRow.innerHTML = `<td colspan="5" class="text-center">Aucun cahier des charges trouvé pour ce projet</td>`;
+                tbody.appendChild(newRow);
+            } else if (visibleRows.length > 0 && noSpecsRow) {
+                noSpecsRow.remove();
+            }
         });
         
         // Project selection handling
@@ -705,8 +731,28 @@
             button.addEventListener('click', function() {
                 if (confirm('Êtes-vous sûr de vouloir supprimer ce cahier des charges ?')) {
                     const specId = this.getAttribute('data-spec-id');
-                    // You'll need to add a route for deleting specifications
-                    alert('Fonctionnalité de suppression à implémenter');
+                    
+                    fetch(`/delete_specification/${specId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            // Recharger la page pour refléter la suppression
+                            window.location.reload();
+                        } else {
+                            alert('Erreur: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Une erreur est survenue lors de la suppression.');
+                    });
                 }
             });
         });

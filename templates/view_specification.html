@@ -14,9 +14,9 @@
                 <i class="material-icons-outlined">arrow_back</i> Retour
             </a>
             {% if specification.status == 'draft' %}
-            <button class="btn btn-primary" id="editSpecBtn">
+            <a href="{{ url_for('edit_specification', specification_id=specification.specification_id) }}" class="btn btn-primary">
                 <i class="material-icons-outlined">edit</i> Modifier
-            </button>
+            </a>
             {% endif %}
         </div>
     </div>
@@ -100,17 +100,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle edit button
-        const editBtn = document.getElementById('editSpecBtn');
-        if (editBtn) {
-            editBtn.addEventListener('click', function() {
-                alert('Fonctionnalité d\'édition à implémenter');
-                // The line below was causing the error - commenting it out
-                // window.location.href = "{{ url_for('edit_specification', specification_id=specification.specification_id) }}";
-                
-                // TODO: Implement edit functionality
-            });
-        }
+        // Le script d'édition n'est plus nécessaire car nous avons un lien vers la page d'édition
     });
 </script>
 {% endblock %}
