@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ specification.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mt-4">{{ specification.title }}</h1>
+            <p class="text-muted">Projet: {{ project.name }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('specifications') }}" class="btn btn-secondary">
+                <i class="material-icons-outlined">arrow_back</i> Retour
+            </a>
+            {% if specification.status == 'draft' %}
+            <button class="btn btn-primary" id="editSpecBtn">
+                <i class="material-icons-outlined">edit</i> Modifier
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Détails du cahier des charges</h6>
+            <span class="badge {% if specification.status == 'draft' %}bg-secondary{% elif specification.status == 'review' %}bg-primary{% else %}bg-success{% endif %}">
+                {{ {'draft': 'Brouillon', 'review': 'En révision', 'approved': 'Approuvé'}[specification.status] }}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="specification-container">
+                {% if specification.description %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Description</h5>
+                    <p class="whitespace-pre-line">{{ specification.description }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.objectives %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Objectifs</h5>
+                    <p class="whitespace-pre-line">{{ specification.objectives }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.requirements %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Exigences fonctionnelles</h5>
+                    <p class="whitespace-pre-line">{{ specification.requirements }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.constraints %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Contraintes techniques</h5>
+                    <p class="whitespace-pre-line">{{ specification.constraints }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.deliverables %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Livrables</h5>
+                    <p class="whitespace-pre-line">{{ specification.deliverables }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.timeline %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Calendrier</h5>
+                    <p class="whitespace-pre-line">{{ specification.timeline }}</p>
+                </div>
+                {% endif %}
+                
+                {% if specification.document_path %}
+                <div class="mb-4">
+                    <h5 class="font-weight-bold">Document joint</h5>
+                    <p><a href="{{ specification.document_path }}" class="btn btn-sm btn-outline-primary" target="_blank">Télécharger le document</a></p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <hr>
+            
+            <div class="text-muted small">
+                Créé le {{ specification.created_at.strftime('%d/%m/%Y') }}
+                {% if specification.created_at != specification.updated_at %}
+                | Dernière mise à jour le {{ specification.updated_at.strftime('%d/%m/%Y') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .whitespace-pre-line {
+        white-space: pre-line;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle edit button
+        const editBtn = document.getElementById('editSpecBtn');
+        if (editBtn) {
+            editBtn.addEventListener('click', function() {
+                alert('Fonctionnalité d\'édition à implémenter');
+                // The line below was causing the error - commenting it out
+                // window.location.href = "{{ url_for('edit_specification', specification_id=specification.specification_id) }}";
+                
+                // TODO: Implement edit functionality
+            });
+        }
+    });
+</script>
+{% endblock %}

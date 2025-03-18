@@ -140,6 +140,8 @@
                         {% endif %}
                     </a>
                 </li>
+                <!-- Add the new Cahier des Charges menu item -->
+                <li class="{% if request.endpoint == 'specifications' %}active{% endif %}"><a href="{{ url_for('specifications') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">description</i> Cahier des Charges</a></li>
                 <li class="{% if request.endpoint == 'groupes' %}active{% endif %}"><a href="{{ url_for('groupes') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">group</i> Mes Groupes</a></li>
                 <li class="{% if request.endpoint == 'parametre' %}active{% endif %}"><a href="{{ url_for('parametre') }}" class="d-flex align-items-center text-dark"><i class="material-icons-outlined">settings</i> Parametre</a></li>
             </ul>
