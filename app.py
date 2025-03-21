@@ -1352,6 +1352,7 @@ def edit_specification(specification_id):
         Participate.user_id == session['user_id']
     ).all()
     
+    
     return render_template('edit_specification.html', 
                           specification=specification, 
                           project=project,
