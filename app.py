@@ -1460,6 +1460,7 @@ def update_specification(specification_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}), 500
+        
 
 if __name__ == '__main__':
     with app.app_context():
