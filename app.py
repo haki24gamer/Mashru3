@@ -1010,7 +1010,11 @@ def deconnexion():
 
 @app.route('/')
 def home():
-    return redirect(url_for('dashboard'))
+    # If user is logged in, redirect to dashboard
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    # Otherwise show the landing page
+    return render_template('landing.html')
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
