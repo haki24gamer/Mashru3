@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Page</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .diagnostic-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mashru3 Diagnostic Page</h1>
+    
+    <div class="diagnostic-card">
+        <h2>Template Files:</h2>
+        <ul>
+            {% for template in templates %}
+                <li class="{% if template.exists %}success{% else %}error{% endif %}">
+                    {{ template.name }}: {% if template.exists %}OK{% else %}MISSING{% endif %}
+                    {% if template.size %} ({{ template.size }} bytes){% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>Flask Configuration:</h2>
+        <pre>{{ config }}</pre>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>Database Status:</h2>
+        <p>Connection: <span class="{% if db_status.connected %}success{% else %}error{% endif %}">
+            {% if db_status.connected %}Connected{% else %}Failed{% endif %}
+        </span></p>
+        {% if db_status.tables %}
+        <h3>Tables:</h3>
+        <ul>
+            {% for table in db_status.tables %}
+                <li>{{ table }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>System Info:</h2>
+        <p>Python version: {{ system_info.python_version }}</p>
+        <p>Flask version: {{ system_info.flask_version }}</p>
+        <p>OS: {{ system_info.os }}</p>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>Actions:</h2>
+        <a href="{{ url_for('dashboard') }}" style="padding: 8px 15px; background-color: #4262e2; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin-right: 10px;">Return to Dashboard</a>
+        <form action="{{ url_for('deconnexion') }}" method="post" style="display:inline;">
+            <button type="submit" style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Logout</button>
+        </form>
+    </div>
+</body>
+</html>
