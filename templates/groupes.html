@@ -1,88 +1,58 @@
-
 {% extends "base.html" %}
-
-{% block title %}Mes Groupes{% endblock %}
+<!-- ...existing head and layout code... -->
+{% block title %}Messagerie{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="h3 mb-0 text-gray-800">Mes Groupes</h1>
-            <p class="mb-4">Gérez vos groupes de collaborateurs</p>
-        </div>
-        <div class="col-auto">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
-                <i class="material-icons-outlined">add</i> Nouveau Groupe
-            </button>
-        </div>
+  <div class="row">
+    <!-- Projects Sidebar -->
+    <div class="col-md-4" style="border-right: 1px solid #ddd; height: 80vh; overflow-y: auto; background-color: #ffffff; box-shadow: 2px 0 8px rgba(0,0,0,0.1);">
+      <h4 class="mt-3 px-3" style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Mes Projets</h4>
+      <ul class="list-group list-group-flush">
+        <!-- Repeat for each project with hover effects -->
+        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+          <div>
+            <strong>Projet Alpha</strong>
+            <span class="badge bg-primary float-end">3</span>
+          </div>
+        </li>
+        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+          <strong>Projet Beta</strong>
+        </li>
+        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+          <strong>Projet Gamma</strong>
+        </li>
+        <!-- ...existing code... -->
+      </ul>
     </div>
-
-    <!-- Content Row -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Mes Groupes</h6>
-                </div>
-                <div class="card-body">
-                    <!-- If groups exist, show them -->
-                    <div class="text-center py-5">
-                        <i class="material-icons-outlined" style="font-size: 48px; color: #ccc;">group</i>
-                        <p class="mt-3">Vous n'avez pas encore de groupes</p>
-                        <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#createGroupModal">
-                            Créer un groupe
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <!-- Chat Window -->
+    <div class="col-md-8 d-flex flex-column" style="height: 80vh;">
+      <!-- Message History -->
+      <div id="chat-history" class="flex-grow-1 px-4 py-3" style="overflow-y: auto; background: #f1f2f6;">
+        <!-- Example received message styled as a bubble -->
+        <div class="mb-3" style="max-width: 60%;">
+          <div style="background: #ffffff; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <strong>Alice</strong>
+            <p class="mb-0" style="margin: 5px 0;">Bonjour, comment allez-vous?</p>
+            <small class="text-muted">10:30</small>
+          </div>
         </div>
+        <!-- Example sent message styled as a bubble -->
+        <div class="mb-3 text-end" style="max-width: 60%; margin-left: auto;">
+          <div style="background: #4262e2; color: #fff; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <strong>Vous</strong>
+            <p class="mb-0" style="margin: 5px 0;">Très bien, merci!</p>
+            <small>10:32</small>
+          </div>
+        </div>
+        <!-- ...existing code... -->
+      </div>
+      <!-- Message Input -->
+      <div class="input-group p-3" style="background: #ffffff; border-top: 1px solid #ddd;">
+        <input type="text" class="form-control" placeholder="Tapez votre message..." id="message-input" style="border-right: none; outline: none;">
+        <button class="btn btn-primary" type="button" id="send-message" style="border: none;">Envoyer</button>
+      </div>
     </div>
+  </div>
 </div>
-
-<!-- Create Group Modal -->
-<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createGroupModalLabel">Créer un Nouveau Groupe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createGroupForm">
-                    <div class="mb-3">
-                        <label for="groupName" class="form-label">Nom du groupe</label>
-                        <input type="text" class="form-control" id="groupName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="groupDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="groupDescription" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="groupMembers" class="form-label">Inviter des membres</label>
-                        <input type="text" class="form-control" id="groupMembers" placeholder="Entrez les emails séparés par des virgules">
-                        <small class="form-text text-muted">Les membres recevront une invitation par email.</small>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="createGroupBtn">Créer le Groupe</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle create group form submission
-        document.getElementById('createGroupBtn').addEventListener('click', function() {
-            // In a real application, you would implement the AJAX call to create a group
-            alert('Fonctionnalité à implémenter: Création de groupe');
-            
-            // Close the modal
-            var modal = bootstrap.Modal.getInstance(document.getElementById('createGroupModal'));
-            modal.hide();
-        });
-    });
-</script>
 {% endblock %}
