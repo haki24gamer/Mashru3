@@ -1465,7 +1465,72 @@ def update_specification(specification_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}), 500
-        
+
+# ... Après les autres routes ...
+
+@app.route('/diagnostic')
+def diagnostic():
+    import os
+    import sys
+    import platform
+    import flask
+    
+    # Liste des fichiers de templates importants
+    template_files = [
+        'base.html',
+        'dashboard.html',
+        'connexion.html',
+        'project.html',
+        'notifications.html',
+        'parametre.html'
+    ]
+    
+    templates = []
+    template_dir = os.path.join(app.root_path, 'templates')
+    
+    for file in template_files:
+        file_path = os.path.join(template_dir, file)
+        exists = os.path.exists(file_path)
+        size = os.path.getsize(file_path) if exists else None
+        templates.append({
+            'name': file,
+            'exists': exists,
+            'size': size
+        })
+    
+    # Vérification de la connexion à la base de données
+    db_status = {'connected': False, 'tables': []}
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            database="Mashru3"
+        )
+        cursor = conn.cursor()
+        cursor.execute("SHOW TABLES")
+        db_status['connected'] = True
+        db_status['tables'] = [table[0] for table in cursor.fetchall()]
+        conn.close()
+    except Exception as e:
+        db_status['error'] = str(e)
+    
+    # Informations système
+    system_info = {
+        'python_version': sys.version,
+        'flask_version': flask.__version__,
+        'os': platform.platform()
+    }
+    
+    return render_template(
+        'debug.html', 
+        templates=templates,
+        config=str(app.config),
+        db_status=db_status,
+        system_info=system_info
+    )
+
+# ... Reste du code ...
 
 if __name__ == '__main__':
     with app.app_context():

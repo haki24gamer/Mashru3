@@ -4,20 +4,20 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mt-4">Bienvenue, {{ user_first_name }}</h1>
+    <h1 class="mt-3 mb-3 fw-bold">Bienvenue, {{ user_first_name }}</h1>
     
-    <!-- Random quote with improved styling -->
-    <div class="row mt-2 mb-4">
+    <!-- Citation plus compacte -->
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="card shadow" style="border-radius: 10px; border-left: 4px solid #4e73df;">
-                <div class="card-body py-4">
+            <div class="card shadow-sm border-0" style="border-radius: 12px; border-left: 4px solid #4262e2; overflow: hidden; background: linear-gradient(to right, #fff, #f8f9ff);">
+                <div class="card-body py-3">
                     <div class="d-flex justify-content-center">
                         <div class="quote-container" style="max-width: 600px;">
-                            <i class="material-icons-outlined" style="color: #4e73df; font-size: 24px; margin-bottom: 10px;">format_quote</i>
-                            <p class="mb-2" style="font-size: 1.2rem; font-style: italic; color: #5a5c69; line-height: 1.6;">
+                            <i class="material-icons-outlined" style="color: #4262e2; font-size: 24px; margin-bottom: 10px; display: block; text-align: center; opacity: 0.8;">format_quote</i>
+                            <p class="mb-2" style="font-size: 1.1rem; font-style: italic; color: #495057; line-height: 1.5; text-align: center;">
                                 "{{ quote.text }}"
                             </p>
-                            <p class="text-right mb-0" style="font-weight: 600; color: #4e73df;">- {{ quote.author }}</p>
+                            <p class="text-end mb-0" style="font-weight: 600; color: #4262e2; font-size: 0.9rem;">- {{ quote.author }}</p>
                         </div>
                     </div>
                 </div>
@@ -25,140 +25,128 @@
         </div>
     </div>
     
+    <!-- Cartes statistiques plus compactes -->
     <div class="row mt-3">
-        <div class="col-md-6 col-lg-3 mb-4">
-            <div class="card h-100 border-left-primary shadow py-2" style="border-left: 4px solid #4e73df; border-radius: 10px;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Projets Actifs</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_projects }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">folder</i>
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-body p-0">
+                    <div style="padding: 12px; background: linear-gradient(135deg, #4262e2 0%, #6185ff 100%); border-radius: 12px 12px 0 0;">
+                        <i class="material-icons-outlined" style="font-size: 2rem; color: white; opacity: 0.9;">folder</i>
+                    </div>
+                    <div style="padding: 12px; text-align: center;">
+                        <h2 class="h2 mb-0 font-weight-bold" style="color: #4262e2; font-size: 1.5rem;">{{ total_projects }}</h2>
+                        <p class="text-uppercase font-weight-bold mb-0" style="font-size: 0.7rem; letter-spacing: 0.5px; color: #6c757d; margin-top: 5px;">Projets Actifs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-body p-0">
+                    <div style="padding: 12px; background: linear-gradient(135deg, #28a745 0%, #5fd778 100%); border-radius: 12px 12px 0 0;">
+                        <i class="material-icons-outlined" style="font-size: 2rem; color: white; opacity: 0.9;">check_circle</i>
+                    </div>
+                    <div style="padding: 12px; text-align: center;">
+                        <h2 class="h2 mb-0 font-weight-bold" style="color: #28a745; font-size: 1.5rem;">{{ task_stats.DONE }} / {{ task_stats.TODO + task_stats.IN_PROGRESS + task_stats.REVIEW + task_stats.DONE }}</h2>
+                        <p class="text-uppercase font-weight-bold mb-0" style="font-size: 0.7rem; letter-spacing: 0.5px; color: #6c757d; margin-top: 5px;">Tâches Terminées</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-body p-0">
+                    <div style="padding: 12px; background: linear-gradient(135deg, #17a2b8 0%, #59d8f0 100%); border-radius: 12px 12px 0 0;">
+                        <i class="material-icons-outlined" style="font-size: 2rem; color: white; opacity: 0.9;">trending_up</i>
+                    </div>
+                    <div style="padding: 12px; text-align: center;">
+                        <h2 class="h2 mb-0 font-weight-bold" style="color: #17a2b8; font-size: 1.5rem;">{{ completion_percentage }}%</h2>
+                        <p class="text-uppercase font-weight-bold mb-0" style="font-size: 0.7rem; letter-spacing: 0.5px; color: #6c757d; margin-top: 5px;">Taux d'Achèvement</p>
+                        <div class="progress mt-2" style="height: 6px; border-radius: 3px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ completion_percentage }}%; background: linear-gradient(to right, #17a2b8, #59d8f0) !important;" aria-valuenow="{{ completion_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-6 col-lg-3 mb-4">
-            <div class="card h-100 border-left-success shadow py-2" style="border-left: 4px solid #1cc88a; border-radius: 10px;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Tâches Terminées</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ task_stats.DONE }} / {{ task_stats.TODO + task_stats.IN_PROGRESS + task_stats.REVIEW + task_stats.DONE }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">check_circle</i>
-                        </div>
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-body p-0">
+                    <div style="padding: 12px; background: linear-gradient(135deg, #ffc107 0%, #ffda6a 100%); border-radius: 12px 12px 0 0;">
+                        <i class="material-icons-outlined" style="font-size: 2rem; color: white; opacity: 0.9;">priority_high</i>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-3 mb-4">
-            <div class="card h-100 border-left-info shadow py-2" style="border-left: 4px solid #36b9cc; border-radius: 10px;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Taux d'Achèvement</div>
-                            <div class="row no-gutters align-items-center">
-                                <div class="col-auto">
-                                    <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ completion_percentage }}%</div>
-                                </div>
-                                <div class="col">
-                                    <div class="progress progress-sm mr-2">
-                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ completion_percentage }}%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">trending_up</i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-3 mb-4">
-            <div class="card h-100 border-left-warning shadow py-2" style="border-left: 4px solid #f6c23e; border-radius: 10px;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Tâches Prioritaires</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ priority_stats.high }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="material-icons-outlined text-gray-300" style="font-size: 2rem;">priority_high</i>
-                        </div>
+                    <div style="padding: 12px; text-align: center;">
+                        <h2 class="h2 mb-0 font-weight-bold" style="color: #ffc107; font-size: 1.5rem;">{{ priority_stats.high }}</h2>
+                        <p class="text-uppercase font-weight-bold mb-0" style="font-size: 0.7rem; letter-spacing: 0.5px; color: #6c757d; margin-top: 5px;">Tâches Prioritaires</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100" style="border-radius: 10px;">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
-                    <h6 class="m-0 font-weight-bold text-primary">Répartition des Tâches</h6>
+    <!-- Graphiques plus compacts -->
+    <div class="row mt-3">
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header py-2 d-flex flex-row align-items-center justify-content-between" style="background-color: white; border-radius: 12px 12px 0 0; border-bottom: 0;">
+                    <h6 class="m-0 font-weight-bold" style="color: #4262e2; font-size: 0.95rem;">Répartition des Tâches</h6>
                 </div>
-                <div class="card-body">
-                    <div class="chart-container" style="position: relative; height:250px;">
+                <div class="card-body px-3 py-2">
+                    <div class="chart-container" style="position: relative; height:230px;">
                         <canvas id="taskStatusChart"></canvas>
                     </div>
                 </div>
-                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                <div class="card-footer small text-muted" style="background-color: white; border-radius: 0 0 12px 12px; border-top: 0;">
                     Mise à jour aujourd'hui
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100" style="border-radius: 10px;">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
-                    <h6 class="m-0 font-weight-bold text-primary">Projets les Plus Actifs</h6>
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header py-2 d-flex flex-row align-items-center justify-content-between" style="background-color: white; border-radius: 12px 12px 0 0; border-bottom: 0;">
+                    <h6 class="m-0 font-weight-bold" style="color: #4262e2; font-size: 0.95rem;">Projets les Plus Actifs</h6>
                 </div>
-                <div class="card-body">
-                    <div class="chart-container" style="position: relative; height:250px;">
+                <div class="card-body px-3 py-2">
+                    <div class="chart-container" style="position: relative; height:230px;">
                         <canvas id="projectActivityChart"></canvas>
                     </div>
                 </div>
-                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                <div class="card-footer small text-muted" style="background-color: white; border-radius: 0 0 12px 12px; border-top: 0;">
                     Basé sur le nombre de tâches
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100" style="border-radius: 10px;">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
-                    <h6 class="m-0 font-weight-bold text-primary">Répartition par Priorité</h6>
+    <div class="row mt-3">
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header py-2 d-flex flex-row align-items-center justify-content-between" style="background-color: white; border-radius: 12px 12px 0 0; border-bottom: 0;">
+                    <h6 class="m-0 font-weight-bold" style="color: #4262e2; font-size: 0.95rem;">Répartition par Priorité</h6>
                 </div>
-                <div class="card-body">
-                    <div class="chart-container" style="position: relative; height:250px;">
+                <div class="card-body px-3 py-2">
+                    <div class="chart-container" style="position: relative; height:230px;">
                         <canvas id="priorityChart"></canvas>
                     </div>
                 </div>
-                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                <div class="card-footer small text-muted" style="background-color: white; border-radius: 0 0 12px 12px; border-top: 0;">
                     Distribution des tâches par niveau de priorité
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6 mb-4">
-            <div class="card shadow h-100" style="border-radius: 10px;">
-                <div class="card-header py-3" style="background-color: #f8f9fc; border-radius: 10px 10px 0 0;">
-                    <h6 class="m-0 font-weight-bold text-primary">Tâches Récentes</h6>
+        <div class="col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; overflow: hidden;">
+                <div class="card-header py-2" style="background-color: white; border-radius: 12px 12px 0 0; border-bottom: 0;">
+                    <h6 class="m-0 font-weight-bold" style="color: #4262e2; font-size: 0.95rem;">Tâches Récentes</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-2">
                     <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
+                        <table class="table table-sm" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>Titre</th>
@@ -169,25 +157,25 @@
                             <tbody>
                                 {% for task in recent_tasks %}
                                 <tr>
-                                    <td>{{ task.title }}</td>
+                                    <td style="font-weight: 500; color: #495057; font-size: 0.85rem;">{{ task.title }}</td>
                                     <td>
                                         {% if task.priority == 'high' %}
-                                            <span class="badge bg-danger">Haute</span>
+                                            <span class="badge bg-danger rounded-pill" style="box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);">Haute</span>
                                         {% elif task.priority == 'medium' %}
-                                            <span class="badge bg-warning">Moyenne</span>
+                                            <span class="badge bg-warning rounded-pill" style="box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);">Moyenne</span>
                                         {% else %}
-                                            <span class="badge bg-success">Basse</span>
+                                            <span class="badge bg-success rounded-pill" style="box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);">Basse</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if task.status == 'DONE' %}
-                                            <span class="badge bg-success">Terminée</span>
+                                            <span class="badge bg-success rounded-pill" style="box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);">Terminée</span>
                                         {% elif task.status == 'IN_PROGRESS' %}
-                                            <span class="badge bg-primary">En cours</span>
+                                            <span class="badge bg-primary rounded-pill" style="box-shadow: 0 2px 4px rgba(66, 98, 226, 0.2);">En cours</span>
                                         {% elif task.status == 'REVIEW' %}
-                                            <span class="badge bg-info">En révision</span>
+                                            <span class="badge bg-info rounded-pill" style="box-shadow: 0 2px 4px rgba(23, 162, 184, 0.2);">En révision</span>
                                         {% else %}
-                                            <span class="badge bg-secondary">À faire</span>
+                                            <span class="badge bg-secondary rounded-pill" style="box-shadow: 0 2px 4px rgba(108, 117, 125, 0.2);">À faire</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -200,7 +188,7 @@
                         </table>
                     </div>
                 </div>
-                <div class="card-footer small text-muted" style="background-color: #f8f9fc; border-radius: 0 0 10px 10px;">
+                <div class="card-footer small text-muted" style="background-color: white; border-radius: 0 0 12px 12px; border-top: 0;">
                     Tâches récemment assignées
                 </div>
             </div>
@@ -209,7 +197,31 @@
 </div>
 
 <script>
-    // Task Status Chart
+    // Animation plus subtile pour les cartes
+    document.addEventListener('DOMContentLoaded', function() {
+        const statCards = document.querySelectorAll('.col-lg-3 .card');
+        statCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(15px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 80 * index);
+            
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+                this.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.08)';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.04)';
+            });
+        });
+    });
+
+    // Configuration des graphiques plus compacte
     var ctxTaskStatus = document.getElementById('taskStatusChart').getContext('2d');
     var taskStatusChart = new Chart(ctxTaskStatus, {
         type: 'doughnut',
@@ -217,30 +229,45 @@
             labels: ['À faire', 'En cours', 'En révision', 'Terminées'],
             datasets: [{
                 data: [{{ task_stats.TODO }}, {{ task_stats.IN_PROGRESS }}, {{ task_stats.REVIEW }}, {{ task_stats.DONE }}],
-                backgroundColor: ['#e74a3b', '#4e73df', '#36b9cc', '#1cc88a'],
-                hoverBackgroundColor: ['#be3c2e', '#3a57ad', '#2a909e', '#17a673'],
-                hoverBorderColor: "rgba(234, 236, 244, 1)",
+                backgroundColor: ['#dc3545', '#4262e2', '#17a2b8', '#28a745'],
+                hoverBackgroundColor: ['#c82333', '#3251c1', '#138496', '#218838'],
+                hoverBorderColor: "#ffffff",
+                borderWidth: 2,
+                borderColor: '#ffffff',
             }],
         },
         options: {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            size: 10,
+                            family: "'Poppins', sans-serif"
+                        }
+                    }
                 }
             },
             cutout: '70%',
-            tooltips: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        return data.labels[tooltipItem.index] + ': ' + data.datasets[0].data[tooltipItem.index];
-                    }
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
+            elements: {
+                arc: {
+                    borderWidth: 0
                 }
             }
         }
     });
 
-    // Project Activity Chart
+    // Graphique activité projet plus compact
     var ctxProjectActivity = document.getElementById('projectActivityChart').getContext('2d');
     var projectLabels = [{% for project in active_projects %}'{{ project.name }}',{% endfor %}];
     var projectData = [{% for project in active_projects %}{{ project.task_count }},{% endfor %}];
@@ -252,9 +279,21 @@
             datasets: [{
                 label: 'Nombre de tâches',
                 data: projectData,
-                backgroundColor: '#4e73df',
-                borderColor: '#4e73df',
-                borderWidth: 1
+                backgroundColor: function(context) {
+                    const chart = context.chart;
+                    const {ctx, chartArea} = chart;
+                    if (!chartArea) {
+                        return null;
+                    }
+                    var gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                    gradient.addColorStop(0, '#4262e2');
+                    gradient.addColorStop(1, '#6185ff');
+                    return gradient;
+                },
+                borderWidth: 0,
+                borderRadius: 10,
+                barPercentage: 0.6,
+                maxBarThickness: 40
             }]
         },
         options: {
@@ -263,14 +302,41 @@
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        precision: 0
+                        precision: 0,
+                        font: {
+                            family: "'Poppins', sans-serif"
+                        }
+                    },
+                    grid: {
+                        drawBorder: false,
+                        color: "rgba(0, 0, 0, 0.05)"
                     }
+                },
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            family: "'Poppins', sans-serif"
+                        }
+                    }
+                }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: {
+                    display: false
                 }
             }
         }
     });
 
-    // Priority Chart
+    // Enhanced priority chart
     var ctxPriority = document.getElementById('priorityChart').getContext('2d');
     var priorityChart = new Chart(ctxPriority, {
         type: 'pie',
@@ -278,25 +344,39 @@
             labels: ['Basse', 'Moyenne', 'Haute'],
             datasets: [{
                 data: [{{ priority_stats.low }}, {{ priority_stats.medium }}, {{ priority_stats.high }}],
-                backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'],
-                hoverBackgroundColor: ['#17a673', '#dda20a', '#be3c2e'],
-                hoverBorderColor: "rgba(234, 236, 244, 1)",
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+                hoverBackgroundColor: ['#218838', '#e0a800', '#c82333'],
+                hoverBorderColor: "#ffffff",
+                borderColor: '#ffffff',
+                borderWidth: 3,
             }],
         },
         options: {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom'
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            size: 12,
+                            family: "'Poppins', sans-serif"
+                        }
+                    }
                 }
             },
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                displayColors: false,
-                caretPadding: 10,
+            animation: {
+                animateScale: true,
+                animateRotate: true,
+                duration: 2000,
+                easing: 'easeOutQuart'
+            },
+            elements: {
+                arc: {
+                    borderWidth: 0
+                }
             }
         }
     });
