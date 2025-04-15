@@ -1,28 +1,27 @@
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename  # Add this import
+from werkzeug.utils import secure_filename
 from datetime import date
-import mysql.connector
 from email.message import EmailMessage
 from flask_mail import Mail, Message
 import random
-import os  # Add this import
+import os
 from datetime import datetime, timedelta
-import time  # Add this import
+import time
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
 
 # Configure Flask-Mail for Gmail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
-app.config['MAIL_PORT'] = 587  # Port for TLS
-app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'  # Replace with your Gmail address
-app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '  # Replace with your app password (not your Gmail password)
-app.config['MAIL_USE_TLS'] = True  # Use TLS
-app.config['MAIL_USE_SSL'] = False  # Don't use SSL
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'
+app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 mail = Mail(app)
 
 # Configure uploads directories
@@ -39,18 +38,6 @@ os.makedirs(app.config['PROJECT_IMAGES_FOLDER'], exist_ok=True)
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# Function to create database if it doesn't exist
-def create_database():
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=""
-    )
-    cursor = conn.cursor()
-    cursor.execute("CREATE DATABASE IF NOT EXISTS Mashru3")
-    conn.close()
-
 
 # User table
 class User(db.Model):
@@ -84,8 +71,13 @@ class Task(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    priority = db.Column(db.Enum('low', 'medium', 'high'), nullable=False)
-    status = db.Column(db.Enum('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'), default='TODO')
+    priority = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), default='TODO')
+    
+    __table_args__ = (
+        db.CheckConstraint("priority IN ('low', 'medium', 'high')", name='check_task_priority'),
+        db.CheckConstraint("status IN ('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE')", name='check_task_status'),
+    )
     start_date = db.Column(db.DATE, nullable=True)
     end_date = db.Column(db.DATE, nullable=True)
     finished_date = db.Column(db.DATE, nullable=True)
@@ -110,10 +102,10 @@ class Notification(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=True)
-    notification_type = db.Column(db.String(50), nullable=False)  # 'invitation', 'mention', etc.
+    notification_type = db.Column(db.String(50), nullable=False)
     content = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    is_accepted = db.Column(db.Boolean, nullable=True)  # For invitations: True=accepted, False=rejected, None=pending
+    is_accepted = db.Column(db.Boolean, nullable=True)
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Specification table
@@ -135,7 +127,6 @@ class Specification(db.Model):
 
 # Ensure the database and tables are created
 with app.app_context():
-    create_database()  # Ensure database exists
     db.create_all()    # Create tables if they don't exist
 
 @app.route('/connexion', methods=['GET', 'POST'])
