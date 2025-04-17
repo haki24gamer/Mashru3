@@ -1459,7 +1459,7 @@ def groupes():
     
     # Here you would typically fetch the user's groups from the database
     # For now, we'll just render a template
-    return render_template('groupes.html')
+    return render_template('messagerie.html')
 
 @app.route('/specifications')
 def specifications():
