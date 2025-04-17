@@ -1,13 +1,23 @@
 <div class="tab-pane fade show active" id="team" role="tabpanel" aria-labelledby="team-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
-            <h5>Participants:</h5>
+            <h5>Participants :</h5>
             <ul class="list-group mt-3">
                 {% for participant in participants %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                         <div class="font-weight-bold">{{ participant.name }}</div>
-                        <small class="text-muted">Role: {{ participant.role }}</small>
+                        <small class="text-muted">Rôle : 
+                            {% if participant.role == 'Owner' %}
+                                Propriétaire
+                            {% elif participant.role == 'Admin' %}
+                                Administrateur
+                            {% elif participant.role == 'Member' %}
+                                Membre
+                            {% else %}
+                                {{ participant.role }} {# Fallback for other roles #}
+                            {% endif %}
+                        </small>
                     </div>
                     <i class="material-icons-outlined">person</i>
                 </li>
@@ -22,7 +32,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addMemberModalLabel">Ajouter Membres</h5>
+                <h5 class="modal-title" id="addMemberModalLabel">Ajouter un Membre</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -30,19 +40,24 @@
             <div class="modal-body">
                 <form id="addMemberForm">
                     <div class="form-group">
-                        <label for="email">Email</label>
+                        <label for="email">E-mail</label>
                         <input type="email" class="form-control" id="email" name="email" required>
                     </div>
                     <div class="form-group">
-                        <label for="role">Role</label>
-                        <input type="text" class="form-control" id="role" name="role" required>
+                        <label for="role">Rôle</label>
+                        <select class="form-control" id="role" name="role" required>
+                            <option value="Member">Membre</option>
+                            <option value="Admin">Administrateur</option>
+                            {# Optionally add Owner if needed, but usually assigned on creation #}
+                            {# <option value="Owner">Propriétaire</option> #}
+                        </select>
                     </div>
                     <input type="hidden" id="project_id" name="project_id" value="{{ project.project_id }}">
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddMemberForm()">Ajouter Membres</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddMemberForm()">Ajouter Membre</button>
             </div>
         </div>
     </div>
@@ -51,9 +66,10 @@
 <script>
 function submitAddMemberForm() {
     const form = document.getElementById('addMemberForm');
+    const roleSelect = document.getElementById('role'); // Get the select element
     const data = {
         email: form.email.value,
-        role: form.role.value,
+        role: roleSelect.value, // Get the selected value ('Member', 'Admin', etc.)
         project_id: form.project_id.value
     };
 
@@ -66,11 +82,21 @@ function submitAddMemberForm() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message === 'Member added successfully') {
-            location.reload();
+        // Check for success based on the message or add a success flag in the response
+        if (data.message === 'Invitation sent successfully') { 
+            // Close the modal
+            $('#addMemberModal').modal('hide');
+            // Optionally: Show a success message to the user (e.g., using a toast notification)
+            alert('Invitation envoyée avec succès !'); 
+            // Reload the page or update the UI dynamically
+            location.reload(); // Simple reload for now
         } else {
-            alert('Failed to add member: ' + data.message);
+            alert('Échec de l\'ajout du membre : ' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Error adding member:', error);
+        alert('Une erreur s\'est produite lors de l\'ajout du membre.');
     });
 }
 </script>

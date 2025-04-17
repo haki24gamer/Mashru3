@@ -511,21 +511,31 @@ def add_member():
         ).first()
         
         if existing_participation:
-            return {'message': 'User is already a member of this project'}, 400
+            return {'message': 'Cet utilisateur est déjà membre de ce projet'}, 400
         elif existing_invitation:
-            return {'message': 'An invitation has already been sent to this user'}, 400
+            return {'message': 'Une invitation a déjà été envoyée à cet utilisateur pour ce projet'}, 400
         else:
             # Get project and sender information
             project = Project.query.get(data['project_id'])
             sender = User.query.get(session['user_id'])
             
+            # Map English role to French for notification message
+            role_en = data['role']
+            role_fr_map = {
+                'Owner': 'Propriétaire',
+                'Admin': 'Administrateur',
+                'Member': 'Membre'
+            }
+            role_fr = role_fr_map.get(role_en, role_en) # Fallback to English if not found
+
             # Create a notification (invitation)
             new_notification = Notification(
                 recipient_id=user.user_id,
                 sender_id=session['user_id'],
                 project_id=data['project_id'],
                 notification_type='invitation',
-                content=f"{sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.",
+                # Use French role in the content
+                content=f"{sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {role_fr}.",
                 is_read=False,
                 is_accepted=None  # Pending
             )
@@ -538,23 +548,28 @@ def add_member():
             
             # Send an email notification if needed (optional)
             try:
-                msg = Message('Invitation à un projet', 
+                msg = Message('Invitation à rejoindre un projet Mashru3', 
                               sender=app.config['MAIL_USERNAME'], 
                               recipients=[user.email])
+                # Use French role in email as well
                 msg.body = f"""
                 Bonjour {user.name},
                 
-                {sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.
+                {sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {role_fr}.
                 
-                Connectez-vous à votre compte pour accepter ou refuser cette invitation.
+                Connectez-vous à votre compte Mashru3 pour accepter ou refuser cette invitation.
+                
+                Cordialement,
+                L'équipe Mashru3
                 """
                 mail.send(msg)
             except Exception as e:
-                print(f"Error sending email: {str(e)}")
+                print(f"Error sending invitation email: {str(e)}")
+                # Don't fail the whole request if email fails, but log it.
                 
             return {'message': 'Invitation sent successfully'}, 200
     else:
-        return {'message': 'Utilisateur non trouvé'}, 404
+        return {'message': 'Utilisateur non trouvé avec cet e-mail'}, 404
 
 @app.route('/notifications')
 def notifications():
@@ -601,11 +616,26 @@ def respond_invitation():
     
     try:
         if response == 'accept':
-            # Add user to project
+            # Extract role from notification content (best effort)
+            # This is fragile. Ideally, store the role ('Owner', 'Admin', 'Member') 
+            # in a separate field or reliably encoded in the content.
+            role_fr_map_reverse = {
+                'Propriétaire': 'Owner',
+                'Administrateur': 'Admin',
+                'Membre': 'Member'
+            }
+            role_en = 'Member' # Default role
+            try:
+                role_fr = notification.content.split(' en tant que ')[-1].replace('.', '')
+                role_en = role_fr_map_reverse.get(role_fr, 'Member') # Default to Member if extraction/mapping fails
+            except:
+                 pass # Keep default 'Member' if splitting fails
+
+            # Add user to project with the determined English role
             new_participate = Participate(
                 user_id=notification.recipient_id,
                 project_id=notification.project_id,
-                role=data.get('role', 'Member')  # Default role is Member if not specified
+                role=role_en # Use the determined English role
             )
             db.session.add(new_participate)
             notification.is_accepted = True
@@ -620,7 +650,8 @@ def respond_invitation():
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error responding to invitation: {str(e)}") # Log the error
+        return jsonify({'success': False, 'message': 'An error occurred while processing the invitation.'}), 500
 
 @app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
 def mark_notification_read(notification_id):
@@ -910,9 +941,13 @@ def update_member_role():
     data = request.get_json()
     project_id = data.get('project_id')
     target_user_id = data.get('user_id')
-    new_role = data.get('role')
+    new_role = data.get('role') # Expecting 'Owner', 'Admin', 'Member' from frontend
     
-    # Check if current user has permission
+    # Basic validation for expected roles
+    if new_role not in ['Owner', 'Admin', 'Member']:
+         return jsonify({'success': False, 'message': 'Invalid role specified'}), 400
+
+    # Check if current user has permission (based on English roles)
     current_user_participation = Participate.query.filter_by(
         user_id=session['user_id'],
         project_id=project_id
@@ -921,17 +956,27 @@ def update_member_role():
     if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
-    # Check if target user is the owner (only owner can change owner's role)
+    # Check if target user exists and is part of the project
     target_participation = Participate.query.filter_by(
         user_id=target_user_id,
         project_id=project_id
     ).first()
+
+    if not target_participation:
+        return jsonify({'success': False, 'message': 'Target user not found in this project'}), 404
     
-    if target_participation.role == 'Owner' and current_user_participation.role != 'Owner':
-        return jsonify({'success': False, 'message': 'Cannot change owner role'}), 403
+    # Prevent non-owners from changing the owner's role or making someone else owner
+    if (target_participation.role == 'Owner' or new_role == 'Owner') and current_user_participation.role != 'Owner':
+        return jsonify({'success': False, 'message': 'Only the project owner can manage ownership'}), 403
     
+    # Prevent owner from changing their own role if they are the only owner
+    if target_participation.role == 'Owner' and int(target_user_id) == session['user_id']:
+        owner_count = Participate.query.filter_by(project_id=project_id, role='Owner').count()
+        if owner_count <= 1:
+             return jsonify({'success': False, 'message': 'Cannot change role, you are the only owner'}), 403
+
     try:
-        target_participation.role = new_role
+        target_participation.role = new_role # Update with English role
         db.session.commit()
         return jsonify({'success': True, 'message': 'Role updated successfully'})
     except Exception as e:
