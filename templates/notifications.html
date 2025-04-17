@@ -23,7 +23,7 @@
                 <div class="card-body p-0">
                     {% if notifications %}
                         <div class="notification-list">
-                            {% for notification in notifications %}
+                            {% for notification in notifications | reverse %}
                                 <div class="notification-item p-3 border-bottom {% if not notification.is_read %}unread{% endif %}" 
                                      id="notification-{{ notification.notification_id }}">
                                     <div class="d-flex">
