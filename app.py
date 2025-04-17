@@ -554,7 +554,7 @@ def add_member():
                 
             return {'message': 'Invitation sent successfully'}, 200
     else:
-        return {'message': 'User not found'}, 404
+        return {'message': 'Utilisateur non trouvé'}, 404
 
 @app.route('/notifications')
 def notifications():
@@ -929,49 +929,68 @@ def update_member_role():
 def remove_member():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
+
     data = request.get_json()
     project_id = data.get('project_id')
     target_user_id = data.get('user_id')
-    
+
     # Check if current user has permission
     current_user_participation = Participate.query.filter_by(
         user_id=session['user_id'],
         project_id=project_id
     ).first()
-    
+
     if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
-    
+
     # Prevent removing the owner
     target_participation = Participate.query.filter_by(
         user_id=target_user_id,
         project_id=project_id
     ).first()
-    
+
+    if not target_participation:
+         return jsonify({'success': False, 'message': 'Member not found in project'}), 404
+
     if target_participation.role == 'Owner':
         return jsonify({'success': False, 'message': 'Cannot remove project owner'}), 403
-    
+
     # Prevent self-removal
     if int(target_user_id) == session['user_id']:
         return jsonify({'success': False, 'message': 'Cannot remove yourself from the project'}), 400
-    
+
     try:
+        # Get project and remover details for notification
+        project = Project.query.get(project_id)
+        remover = User.query.get(session['user_id'])
+
         # Remove user's assignments in this project
         tasks = Task.query.filter_by(project_id=project_id).all()
         task_ids = [task.task_id for task in tasks]
-        
+
         if task_ids:
             assignments = Assigned.query.filter(
                 Assigned.user_id == target_user_id,
                 Assigned.task_id.in_(task_ids)
             ).all()
-            
+
             for assignment in assignments:
                 db.session.delete(assignment)
-        
+
         # Remove user from project
         db.session.delete(target_participation)
+
+        # Create notification for the removed user
+        removal_notification = Notification(
+            recipient_id=target_user_id,
+            sender_id=session['user_id'],
+            project_id=project_id,
+            notification_type='removal',
+            content=f"Vous avez été retiré du projet '{project.name}' par {remover.name}.",
+            is_read=False
+        )
+        db.session.add(removal_notification)
+
         db.session.commit()
         return jsonify({'success': True, 'message': 'Member removed successfully'})
     except Exception as e:

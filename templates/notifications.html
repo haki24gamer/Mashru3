@@ -106,6 +106,25 @@
     </div>
 </div>
 
+<!-- Rejection Confirmation Modal -->
+<div class="modal fade" id="rejectConfirmationModal" tabindex="-1" aria-labelledby="rejectConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="rejectConfirmationModalLabel">Confirmer le Refus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir refuser cette invitation au projet ?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="confirm-reject-btn">Refuser l'Invitation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .icon-circle {
     width: 45px;
@@ -208,42 +227,52 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Reject invitation
+    // Reject invitation - Show Modal
     document.querySelectorAll('.reject-invitation').forEach(button => {
         button.addEventListener('click', function() {
             const notificationId = this.getAttribute('data-notification-id');
-            
-            if (confirm('Êtes-vous sûr de vouloir refuser cette invitation?')) {
-                fetch('/respond_invitation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        notification_id: notificationId,
-                        response: 'reject'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const notificationItem = document.getElementById(`notification-${notificationId}`);
-                        const actionsDiv = notificationItem.querySelector('.invitation-actions');
-                        actionsDiv.innerHTML = '<span class="badge bg-danger rounded-pill"><i class="fas fa-times me-1"></i>Invitation refusée</span>';
-                        notificationItem.classList.remove('unread');
-                        updateNotificationCount();
-                    } else {
-                        alert('Erreur: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Une erreur est survenue lors du traitement de votre demande.');
-                });
-            }
+            const rejectModal = new bootstrap.Modal(document.getElementById('rejectConfirmationModal'));
+            // Store notificationId on the confirm button inside the modal
+            document.getElementById('confirm-reject-btn').dataset.notificationId = notificationId;
+            rejectModal.show();
         });
     });
-    
+
+    // Confirm Rejection from Modal
+    document.getElementById('confirm-reject-btn').addEventListener('click', function() {
+        const notificationId = this.dataset.notificationId;
+        const rejectModal = bootstrap.Modal.getInstance(document.getElementById('rejectConfirmationModal'));
+
+        fetch('/respond_invitation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                notification_id: notificationId,
+                response: 'reject'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            rejectModal.hide(); // Hide the modal first
+            if (data.success) {
+                const notificationItem = document.getElementById(`notification-${notificationId}`);
+                const actionsDiv = notificationItem.querySelector('.invitation-actions');
+                actionsDiv.innerHTML = '<span class="badge bg-danger rounded-pill"><i class="fas fa-times me-1"></i>Invitation refusée</span>';
+                notificationItem.classList.remove('unread');
+                updateNotificationCount();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            rejectModal.hide();
+            console.error('Error:', error);
+            alert('Une erreur est survenue lors du traitement de votre demande.');
+        });
+    });
+
     // Mark as read
     document.querySelectorAll('.mark-read').forEach(button => {
         button.addEventListener('click', function() {
