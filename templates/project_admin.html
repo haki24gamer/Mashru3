@@ -96,6 +96,33 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Pending Invitations -->
+                {% if pending_invitations %}
+                <div class="pending-invitations mt-4 mb-4">
+                    <h6>Pending Invitations</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Invited Role</th>
+                                    <th>Sent On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invite in pending_invitations %}
+                                <tr>
+                                    <td>{{ invite.email }}</td>
+                                    <td>{{ invite.role }}</td>
+                                    <td>{{ invite.sent_at.strftime('%Y-%m-%d') if invite.sent_at else 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
                 
                 <!-- Add New Member Form -->
                 <div class="add-member-form">
@@ -330,17 +357,19 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.message === 'Member added successfully') {
-                showConfirmation('Member added successfully!', 'success');
-                // Reload page to show updated member list
-                setTimeout(() => window.location.reload(), 1500);
+            if (data.message === 'Invitation sent successfully') { // Check for the correct message
+                showConfirmation('Invitation sent successfully!', 'success');
+                // Clear the email input after sending
+                document.getElementById('new-member-email').value = '';
+                // Optionally reload or update the UI if needed, but an invitation doesn't immediately add the member
+                // setTimeout(() => window.location.reload(), 1500); // Consider if reload is necessary here
             } else {
                 showConfirmation(`Error: ${data.message}`, 'error');
             }
         })
         .catch(error => {
             console.error('Error adding member:', error);
-            showConfirmation('Failed to add member. Please try again.', 'error');
+            showConfirmation('Failed to send invitation. Please try again.', 'error');
         });
     });
     

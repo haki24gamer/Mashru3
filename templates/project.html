@@ -134,7 +134,7 @@
                 <h4 class="modal-title font-weight-bold" id="addProjectModalLabel">Démarrez votre aventure avec Mashru3</h4>
                 <p class="text-muted mb-4">Créez un nouveau projet pour commencer à collaborer</p>
                 
-                <form action="/add_project" method="POST" class="text-left">
+                <form action="/add_project" method="POST" class="text-left" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="name" class="font-weight-bold">Nom du Projet:</label>
                         <input type="text" class="form-control" id="name" name="name" required placeholder="Entrez le nom du projet">
@@ -144,8 +144,9 @@
                         <textarea class="form-control" id="description" name="description" rows="3" required placeholder="Décrivez votre projet"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="image" class="font-weight-bold">URL de l'image:</label>
-                        <input type="text" class="form-control" id="image" name="image" placeholder="https://example.com/image.jpg">
+                        <label for="image" class="font-weight-bold">Image du Projet:</label>
+                        <input type="file" class="form-control-file" id="image" name="image" accept="image/*">
+                        <img id="imagePreview" src="#" alt="Aperçu de l'image" class="img-fluid mt-2" style="max-height: 150px; display: none; margin: 0 auto; border-radius: 8px;"/>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -214,4 +215,36 @@
         }
     }
 </style>
+
+<script>
+    // Image Preview Script
+    const imageInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+
+    imageInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block'; // Show the preview
+            }
+            
+            reader.readAsDataURL(file); // Read the file as a data URL
+        } else {
+            // No file selected or not an image
+            imagePreview.src = '#'; // Reset src
+            imagePreview.style.display = 'none'; // Hide the preview
+        }
+    });
+
+    // Optional: Reset preview when modal is closed
+    $('#addProjectModal').on('hidden.bs.modal', function () {
+        imageInput.value = ''; // Clear the file input
+        imagePreview.src = '#';
+        imagePreview.style.display = 'none';
+    });
+</script>
 {% endblock %}

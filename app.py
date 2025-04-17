@@ -414,19 +414,61 @@ def add_project():
     if request.method == 'POST':
         name = request.form['name']
         description = request.form['description']
-        image = request.form['image']
-        start_date = request.form['start_date']
-        end_date = request.form['end_date']
-        created_at = date.today()
-        new_project = Project(name=name, description=description, image=image, start_date=start_date, end_date=end_date, created_at=created_at)
+        start_date_str = request.form['start_date']
+        end_date_str = request.form['end_date']
+        
+        # Convert date strings to date objects
+        start_date = date.fromisoformat(start_date_str) if start_date_str else None
+        end_date = date.fromisoformat(end_date_str) if end_date_str else None
+        
+        image_path = None # Default to no image
+
+        # Handle file upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    # Create a secure filename
+                    timestamp = int(time.time())
+                    filename = secure_filename(f"project_{timestamp}_{file.filename}")
+                    filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
+                    
+                    # Save the file
+                    file.save(filepath)
+                    
+                    # Store the relative path for web access
+                    image_path = f"/static/uploads/project_images/{filename}"
+                except Exception as e:
+                    print(f"Error uploading project image: {str(e)}") 
+                    # Optionally add a flash message for the user
+
+        new_project = Project(
+            name=name, 
+            description=description, 
+            image=image_path, 
+            start_date=start_date, 
+            end_date=end_date
+            # created_at is handled by server_default
+        )
         db.session.add(new_project)
-        db.session.commit()
+        db.session.commit() # Commit to get the project_id
+
         user_id = session['user_id']
-        new_participate = Participate(role='Owner', user_id=user_id, project_id=new_project.project_id)
+        new_participate = Participate(
+            role='Owner', 
+            user_id=user_id, 
+            project_id=new_project.project_id
+            # created_at is handled by server_default
+        )
         db.session.add(new_participate)
         db.session.commit()
+        
         return redirect(url_for('projects'))
-    return render_template('add_project.html')
+        
+    # GET request just renders the template (or redirects if not logged in)
+    # The modal is part of the projects page, so usually we redirect back there.
+    # If accessed directly via GET (unlikely with the modal setup), redirect to projects.
+    return redirect(url_for('projects'))
 
 @app.route('/add_task', methods=['POST'])
 def add_task():
@@ -743,7 +785,7 @@ def project_detail(project_id):
     ).all()
     
     # Format participants data for the template
-    participants = [{'name': user.name, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
+    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
     
     # Determine the current user's role in this project
     user_participation = Participate.query.filter_by(
@@ -762,13 +804,37 @@ def project_detail(project_id):
         assigned_users = db.session.query(User).join(Assigned).filter(Assigned.task_id == task.task_id).all()
         task.assigned_users = assigned_users
 
+    # Get pending invitations for this project
+    pending_invitations = db.session.query(
+        Notification, User.email, User.name
+    ).join(
+        User, Notification.recipient_id == User.user_id
+    ).filter(
+        Notification.project_id == project_id,
+        Notification.notification_type == 'invitation',
+        Notification.is_accepted == None
+    ).all()
+
+    # Format pending invitations data
+    pending_invites_data = []
+    for notification, email, name in pending_invitations:
+        # Extract role from content (assuming format: "... as Role.")
+        role_str = notification.content.split(' en tant que ')[-1].replace('.', '') if ' en tant que ' in notification.content else 'N/A'
+        pending_invites_data.append({
+            'email': email,
+            'name': name,
+            'role': role_str,
+            'sent_at': notification.created_at
+        })
+
     return render_template(
         'project_detail.html', 
         project=project, 
         participants=participants, 
         tasks=tasks, 
         user_role=user_role,
-        is_admin=is_admin
+        is_admin=is_admin,
+        pending_invitations=pending_invites_data
     )
 
 @app.route('/update_project/<int:project_id>', methods=['POST'])
