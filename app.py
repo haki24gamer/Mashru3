@@ -9,6 +9,11 @@ import random
 import os
 from datetime import datetime, timedelta
 import time
+try:
+    import mysql.connector
+except ImportError:
+    # MySQL connector not installed
+    mysql = None
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
