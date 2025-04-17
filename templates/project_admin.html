@@ -21,12 +21,15 @@
                             <div class="form-group">
                                 <label for="project-image">Image du Projet</label>
                                 <input type="file" class="form-control" id="project-image" accept="image/*">
-                                {% if project.image %}
-                                <div class="mt-2">
-                                    <small>Image actuelle :</small>
-                                    <img src="{{ project.image }}" alt="Image du Projet" style="max-width: 100px; max-height: 100px;" class="ms-2">
+                                <div class="mt-2" id="image-preview-container">
+                                    <small>Aperçu :</small>
+                                    <img id="image-preview" 
+                                         src="{{ project.image if project.image else '#' }}" 
+                                         alt="Aperçu de l'image du projet" 
+                                         style="max-width: 100px; max-height: 100px; display: {{ 'inline-block' if project.image else 'none' }};" 
+                                         class="ms-2">
+                                    <span id="no-image-text" style="display: {{ 'none' if project.image else 'inline' }};" class="ms-2 text-muted">Aucune image sélectionnée</span>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -249,6 +252,37 @@
         confirmationModal.show();
     }
 
+    // Image Preview Handler
+    document.getElementById('project-image').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('image-preview');
+        const previewContainer = document.getElementById('image-preview-container');
+        const noImageText = document.getElementById('no-image-text');
+
+        if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'inline-block';
+                noImageText.style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            // If no file is selected (e.g., user cancels), show the original or hide preview
+            const originalImage = "{{ project.image if project.image else '' }}";
+            if (originalImage) {
+                 preview.src = originalImage;
+                 preview.style.display = 'inline-block';
+                 noImageText.style.display = 'none';
+            } else {
+                 preview.src = '#';
+                 preview.style.display = 'none';
+                 noImageText.style.display = 'inline';
+            }
+        }
+    });
+
     // Mise à jour des informations du projet
     document.getElementById('update-project-btn').addEventListener('click', function() {
         const projectId = {{ project.project_id }};
@@ -274,20 +308,15 @@
         .then(data => {
             if (data.success) {
                 showConfirmation('Projet mis à jour avec succès !', 'success');
-                // Mettre à jour l'aperçu de l'image si fournie
+                // Mettre à jour l'aperçu de l'image si une nouvelle a été téléchargée
                 if (data.image_path) {
-                    const imgContainer = document.querySelector('#project-image').parentNode;
-                    let imgPreview = imgContainer.querySelector('div');
-                    if (!imgPreview) {
-                        imgPreview = document.createElement('div');
-                        imgPreview.className = 'mt-2';
-                        imgContainer.appendChild(imgPreview);
-                    }
-                    imgPreview.innerHTML = `
-                        <small>Image actuelle :</small>
-                        <img src="${data.image_path}" alt="Image du Projet" style="max-width: 100px; max-height: 100px;" class="ms-2">
-                    `;
+                    const preview = document.getElementById('image-preview');
+                    preview.src = data.image_path + '?t=' + new Date().getTime(); // Add timestamp to force refresh if needed
+                    preview.style.display = 'inline-block';
+                    document.getElementById('no-image-text').style.display = 'none';
                 }
+                // Recharger la page après un court délai pour voir le message
+                setTimeout(() => window.location.reload(), 1500); 
             } else {
                 showConfirmation(`Erreur : ${data.message}`, 'error');
             }

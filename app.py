@@ -853,19 +853,32 @@ def update_project(project_id):
     
     try:
         project = Project.query.get_or_404(project_id)
+        old_image_path = project.image # Store the old image path
         
         # Handle form data
         if request.files and 'project_image' in request.files:
             file = request.files['project_image']
             if file and file.filename and allowed_file(file.filename):
                 # Create secure filename and save the file
-                filename = secure_filename(f"project_{project_id}_{file.filename}")
+                timestamp = int(time.time()) # Add timestamp for uniqueness
+                filename = secure_filename(f"project_{project_id}_{timestamp}_{file.filename}")
                 filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
                 file.save(filepath)
                 
                 # Update project image path
                 relative_path = f"/static/uploads/project_images/{filename}"
                 project.image = relative_path
+
+                # Delete the old image file if it exists and is different
+                if old_image_path and old_image_path != relative_path:
+                    try:
+                        # Construct the absolute path for the old image
+                        old_image_full_path = os.path.join(app.root_path, old_image_path.lstrip('/'))
+                        if os.path.exists(old_image_full_path):
+                            os.remove(old_image_full_path)
+                            print(f"Deleted old project image: {old_image_full_path}") # Optional: for logging
+                    except Exception as e:
+                        print(f"Error deleting old project image {old_image_path}: {str(e)}") # Log error but continue
         
         # Update other project data
         if request.form.get('name'):
