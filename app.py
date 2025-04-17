@@ -475,19 +475,132 @@ def add_task():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
     data = request.get_json()
+    
+    # Convert date strings to date objects, handle empty strings
+    start_date_str = data.get('start_date')
+    end_date_str = data.get('end_date')
+    
+    start_date = date.fromisoformat(start_date_str) if start_date_str else None
+    end_date = date.fromisoformat(end_date_str) if end_date_str else None
+    
     new_task = Task(
         project_id=data['project_id'],
         title=data['title'],
         description=data['description'],
         priority=data['priority'],
         status=data['status'],
-        start_date=data['start_date'],
-        end_date=data['end_date']
+        start_date=start_date, # Use converted date object or None
+        end_date=end_date     # Use converted date object or None
     )
     db.session.add(new_task)
     db.session.commit()
 
     return {'message': 'Task created successfully'}, 200
+
+@app.route('/get_task_assignees/<int:task_id>')
+def get_task_assignees(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    # Optional: Check if user has access to the project containing this task
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+    
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+    if not participation:
+         return jsonify({'success': False, 'message': 'Access denied to project'}), 403
+
+    assignees = Assigned.query.filter_by(task_id=task_id).all()
+    assignee_ids = [assignee.user_id for assignee in assignees]
+    return jsonify({'success': True, 'assignee_ids': assignee_ids})
+
+
+@app.route('/update_task_assignments', methods=['POST'])
+def update_task_assignments():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    task_id = data.get('task_id')
+    submitted_user_ids = set(map(int, data.get('user_ids', [])))
+
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+    project = Project.query.get(task.project_id)
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+    if not participation or participation.role not in ['Owner', 'Admin']:
+         return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    assigner = User.query.get(session['user_id'])
+
+    try:
+        current_assignments = Assigned.query.filter_by(task_id=task_id).all()
+        current_user_ids = set(assignment.user_id for assignment in current_assignments)
+
+        users_to_assign = submitted_user_ids - current_user_ids
+        users_to_unassign = current_user_ids - submitted_user_ids
+
+        # Assign new users and send notifications
+        for user_id in users_to_assign:
+            is_participant = Participate.query.filter_by(user_id=user_id, project_id=task.project_id).first()
+            if is_participant:
+                new_assignment = Assigned(user_id=user_id, task_id=task_id) 
+                db.session.add(new_assignment)
+
+                # Create notification for the newly assigned user
+                notification_content = f"{assigner.name} vous a assigné à la tâche '{task.title}' dans le projet '{project.name}'."
+                
+                new_notification = Notification(
+                    recipient_id=user_id,
+                    sender_id=session['user_id'],
+                    project_id=task.project_id,
+                    notification_type='task_assignment',
+                    content=notification_content,
+                    is_read=False
+                )
+                db.session.add(new_notification)
+
+        # Unassign users and send notifications
+        if users_to_unassign:
+            # Perform the deletion
+            Assigned.query.filter(
+                Assigned.task_id == task_id,
+                Assigned.user_id.in_(users_to_unassign)
+            ).delete(synchronize_session=False)
+
+            # Create notifications for unassigned users
+            for user_id in users_to_unassign:
+                # Check if user still exists (optional, but good practice)
+                unassigned_user = User.query.get(user_id)
+                if unassigned_user:
+                    notification_content = f"{assigner.name} vous a désassigné de la tâche '{task.title}' dans le projet '{project.name}'."
+                    
+                    unassign_notification = Notification(
+                        recipient_id=user_id,
+                        sender_id=session['user_id'],
+                        project_id=task.project_id,
+                        notification_type='task_unassignment', # New type
+                        content=notification_content,
+                        is_read=False
+                    )
+                    db.session.add(unassign_notification)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Assignments updated successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating assignments for task {task_id}: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while updating assignments.'}), 500
 
 @app.route('/add_member', methods=['POST'])
 def add_member():
@@ -682,48 +795,6 @@ def inject_notifications_data():
         ).count()
         return {'notification_count': unread_count}
     return {'notification_count': 0}
-
-@app.route('/assign_user', methods=['POST'])
-def assign_user():
-    if 'user_id' not in session:
-        return redirect(url_for('connexion'))
-    data = request.get_json()
-    user_ids = data['user_ids']
-    task_id = data['task_id']
-    note = data.get('note', '')
-
-    # Get task and project information
-    task = Task.query.get(task_id)
-    if not task:
-        return {'message': 'Task not found'}, 404
-        
-    project = Project.query.get(task.project_id)
-    assigner = User.query.get(session['user_id'])  # Person doing the assignment
-
-    for user_id in user_ids:
-        # Check if the user is already assigned to the task
-        existing_assignment = Assigned.query.filter_by(user_id=user_id, task_id=task_id).first()
-        if not existing_assignment:
-            new_assignment = Assigned(user_id=user_id, task_id=task_id, note=note)
-            db.session.add(new_assignment)
-            
-            # Create notification for the user
-            notification_content = f"{assigner.name} vous a assigné à la tâche '{task.title}' dans le projet '{project.name}'."
-            if note:
-                notification_content += f" Note: {note}"
-                
-            new_notification = Notification(
-                recipient_id=user_id,
-                sender_id=session['user_id'],
-                project_id=task.project_id,
-                notification_type='task_assignment',
-                content=notification_content,
-                is_read=False
-            )
-            db.session.add(new_notification)
-
-    db.session.commit()
-    return {'message': 'User(s) assigned successfully'}, 200
 
 @app.route('/update_task_status', methods=['POST'])
 def update_task_status():
@@ -1659,7 +1730,22 @@ def update_specification(specification_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}), 500
 
-# ... Après les autres routes ...
+@app.route('/delete_all_notifications', methods=['POST'])
+def delete_all_notifications():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Non authentifié'}), 401
+    
+    user_id = session['user_id']
+    
+    try:
+        # Delete all notifications for the current user
+        Notification.query.filter_by(recipient_id=user_id).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Toutes les notifications ont été supprimées.'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting all notifications for user {user_id}: {str(e)}") # Log the error
+        return jsonify({'success': False, 'message': 'Une erreur est survenue lors de la suppression.'}), 500
 
 @app.route('/diagnostic')
 def diagnostic():
@@ -1722,8 +1808,6 @@ def diagnostic():
         db_status=db_status,
         system_info=system_info
     )
-
-# ... Reste du code ...
 
 if __name__ == '__main__':
     with app.app_context():
