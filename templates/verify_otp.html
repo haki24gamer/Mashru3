@@ -46,14 +46,27 @@
             margin-bottom: 1rem;
             font-size: 1rem;
         }
+        .resend-otp-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        #resend-feedback {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>OTP Verification</h2>
+        <p class="text-center text-muted mb-3">An OTP has been sent to your email address.</p>
         {% if error %}
             <p class="text-danger">{{ error }}</p>
         {% endif %}
+        <div id="resend-feedback"></div>
         <form action="{{ url_for('verify_otp') }}" method="POST">
             <div class="form-group">
                 <label for="otp" class="form-label">Enter OTP:</label>
@@ -63,6 +76,48 @@
             </div>
             <button type="submit" class="btn btn-primary">Verify OTP</button>
         </form>
+        <a href="#" id="resend-otp" class="resend-otp-link">Resend OTP</a>
     </div>
+
+    <script>
+        document.getElementById('resend-otp').addEventListener('click', function(event) {
+            event.preventDefault();
+            const feedbackDiv = document.getElementById('resend-feedback');
+            const resendLink = this;
+
+            resendLink.style.pointerEvents = 'none';
+            resendLink.style.opacity = '0.6';
+            feedbackDiv.textContent = 'Sending...';
+            feedbackDiv.className = 'text-muted';
+
+            fetch("{{ url_for('resend_otp') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    feedbackDiv.textContent = 'A new OTP has been sent.';
+                    feedbackDiv.className = 'text-success';
+                } else {
+                    feedbackDiv.textContent = data.message || 'Error resending OTP.';
+                    feedbackDiv.className = 'text-danger';
+                }
+                setTimeout(() => {
+                    resendLink.style.pointerEvents = 'auto';
+                    resendLink.style.opacity = '1';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                feedbackDiv.textContent = 'Network error while resending OTP.';
+                feedbackDiv.className = 'text-danger';
+                resendLink.style.pointerEvents = 'auto';
+                resendLink.style.opacity = '1';
+            });
+        });
+    </script>
 </body>
 </html>

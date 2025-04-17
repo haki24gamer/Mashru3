@@ -153,18 +153,36 @@ def inscription():
         name = request.form['name']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
-        
+
         # Generate OTP and store registration data in session
         otp = str(random.randint(100000, 999999))
         session['registration_data'] = {'name': name, 'email': email, 'password': password}
         session['otp'] = otp
-        
-        # Send OTP to user's email
-        msg = Message('OTP Verification', sender=app.config['MAIL_USERNAME'], recipients=[email])
-        msg.body = f'Your OTP is: {otp}'
-        mail.send(msg)
-        
-        return redirect(url_for('verify_otp'))
+
+        # Send OTP to user's email using HTML format
+        msg = Message('Vérification OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #4262e2;">Bienvenue chez Mashru3!</h2>
+            <p>Bonjour {name},</p>
+            <p>Merci de vous être inscrit. Veuillez utiliser le code OTP suivant pour vérifier votre adresse e-mail :</p>
+            <p style="font-size: 24px; font-weight: bold; color: #4262e2; text-align: center; background-color: #f0f8ff; padding: 15px; border-radius: 5px; letter-spacing: 3px;">
+                {otp}
+            </p>
+            <p>Ce code expirera bientôt. Si vous n'avez pas demandé cette inscription, veuillez ignorer cet e-mail.</p>
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 0.9em; color: #777;">Cordialement,<br>L'équipe Mashru3</p>
+        </div>
+        """
+        try:
+            mail.send(msg)
+            return redirect(url_for('verify_otp'))
+        except Exception as e:
+            # Log the error and inform the user
+            print(f"Error sending OTP email: {e}")
+            # You might want to add a flash message here to inform the user
+            return render_template('inscription.html', error="Impossible d'envoyer l'e-mail de vérification. Veuillez réessayer.")
+
     return render_template('inscription.html')
 
 @app.route('/verify_otp', methods=['GET', 'POST'])
@@ -187,6 +205,42 @@ def verify_otp():
         else:
             error = 'Invalid OTP'
     return render_template('verify_otp.html', error=error)
+
+@app.route('/resend_otp', methods=['POST'])
+def resend_otp():
+    if 'registration_data' not in session:
+        return jsonify({'success': False, 'message': 'Aucune donnée d\'inscription trouvée.'}), 400
+
+    try:
+        data = session['registration_data']
+        name = data['name']
+        email = data['email']
+
+        # Generate a new OTP
+        otp = str(random.randint(100000, 999999))
+        session['otp'] = otp # Update OTP in session
+
+        # Resend OTP email
+        msg = Message('Nouveau code OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #4262e2;">Votre nouveau code OTP Mashru3</h2>
+            <p>Bonjour {name},</p>
+            <p>Voici votre nouveau code de vérification :</p>
+            <p style="font-size: 24px; font-weight: bold; color: #4262e2; text-align: center; background-color: #f0f8ff; padding: 15px; border-radius: 5px; letter-spacing: 3px;">
+                {otp}
+            </p>
+            <p>Ce code expirera bientôt. Si vous n'avez pas demandé ce code, veuillez ignorer cet e-mail.</p>
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 0.9em; color: #777;">Cordialement,<br>L'équipe Mashru3</p>
+        </div>
+        """
+        mail.send(msg)
+        return jsonify({'success': True, 'message': 'OTP renvoyé avec succès.'})
+
+    except Exception as e:
+        print(f"Error resending OTP email: {e}")
+        return jsonify({'success': False, 'message': 'Erreur lors du renvoi de l\'OTP.'}), 500
 
 # Collection of collaboration and teamwork quotes
 COLLABORATION_QUOTES = [
