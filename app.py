@@ -130,6 +130,14 @@ class Specification(db.Model):
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
     updated_at = db.Column(db.DATE, server_default=db.func.current_date(), onupdate=db.func.current_date())
 
+# Message table for group chat
+class Message(db.Model):
+    message_id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now())
+
 # Ensure the database and tables are created
 with app.app_context():
     db.create_all()    # Create tables if they don't exist
@@ -1456,10 +1464,84 @@ def groupes():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    
-    # Here you would typically fetch the user's groups from the database
-    # For now, we'll just render a template
-    return render_template('messagerie.html')
+    # Fetch user's projects for sidebar
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    return render_template('messagerie.html', projects=user_projects)
+
+# API endpoint: Get user's projects (for sidebar)
+@app.route('/api/user_projects')
+def api_user_projects():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    user_id = session['user_id']
+    projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    result = [{'project_id': p.project_id, 'name': p.name} for p in projects]
+    return jsonify({'success': True, 'projects': result})
+
+# API endpoint: Get messages for a project
+@app.route('/api/messages/<int:project_id>')
+def api_get_messages(project_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    # Check user is a participant
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    if not participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    messages = Message.query.filter_by(project_id=project_id).order_by(Message.timestamp.asc()).all()
+    result = []
+    for msg in messages:
+        sender = User.query.get(msg.sender_id)
+        result.append({
+            'message_id': msg.message_id,
+            'sender_id': msg.sender_id,
+            'sender_name': sender.name if sender else "Utilisateur",
+            'content': msg.content,
+            'timestamp': msg.timestamp.strftime('%H:%M')
+        })
+    return jsonify({'success': True, 'messages': result})
+
+# API endpoint: Send a message
+@app.route('/api/send_message', methods=['POST'])
+def api_send_message():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    data = request.get_json()
+    project_id = data.get('project_id')
+    content = data.get('content', '').strip()
+    if not project_id or not content:
+        return jsonify({'success': False, 'message': 'Project and content required'}), 400
+    # Check user is a participant
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    if not participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    msg = Message(
+        project_id=project_id,
+        sender_id=session['user_id'],
+        content=content
+    )
+    db.session.add(msg)
+    db.session.commit()
+    sender = User.query.get(session['user_id'])
+    return jsonify({
+        'success': True,
+        'message': {
+            'message_id': msg.message_id,
+            'sender_id': msg.sender_id,
+            'sender_name': sender.name if sender else "Vous",
+            'content': msg.content,
+            'timestamp': msg.timestamp.strftime('%H:%M')
+        }
+    })
 
 @app.route('/specifications')
 def specifications():

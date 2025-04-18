@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-<!-- ...existing head and layout code... -->
 {% block title %}Messagerie{% endblock %}
 
 {% block content %}
@@ -8,51 +7,113 @@
     <!-- Projects Sidebar -->
     <div class="col-md-4" style="border-right: 1px solid #ddd; height: 80vh; overflow-y: auto; background-color: #ffffff; box-shadow: 2px 0 8px rgba(0,0,0,0.1);">
       <h4 class="mt-3 px-3" style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Mes Projets</h4>
-      <ul class="list-group list-group-flush">
-        <!-- Repeat for each project with hover effects -->
-        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
-          <div>
-            <strong>Projet Alpha</strong>
-            <span class="badge bg-primary float-end">3</span>
-          </div>
-        </li>
-        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
-          <strong>Projet Beta</strong>
-        </li>
-        <li class="list-group-item" style="cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
-          <strong>Projet Gamma</strong>
-        </li>
-        <!-- ...existing code... -->
+      <ul class="list-group list-group-flush" id="project-list">
+        <!-- Projects will be loaded here -->
       </ul>
     </div>
     <!-- Chat Window -->
     <div class="col-md-8 d-flex flex-column" style="height: 80vh;">
       <!-- Message History -->
       <div id="chat-history" class="flex-grow-1 px-4 py-3" style="overflow-y: auto; background: #f1f2f6;">
-        <!-- Example received message styled as a bubble -->
-        <div class="mb-3" style="max-width: 60%;">
-          <div style="background: #ffffff; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <strong>Alice</strong>
-            <p class="mb-0" style="margin: 5px 0;">Bonjour, comment allez-vous?</p>
-            <small class="text-muted">10:30</small>
-          </div>
-        </div>
-        <!-- Example sent message styled as a bubble -->
-        <div class="mb-3 text-end" style="max-width: 60%; margin-left: auto;">
-          <div style="background: #4262e2; color: #fff; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <strong>Vous</strong>
-            <p class="mb-0" style="margin: 5px 0;">Très bien, merci!</p>
-            <small>10:32</small>
-          </div>
-        </div>
-        <!-- ...existing code... -->
+        <div id="chat-placeholder" class="text-center text-muted mt-5">Sélectionnez un projet pour commencer à discuter.</div>
       </div>
       <!-- Message Input -->
       <div class="input-group p-3" style="background: #ffffff; border-top: 1px solid #ddd;">
-        <input type="text" class="form-control" placeholder="Tapez votre message..." id="message-input" style="border-right: none; outline: none;">
-        <button class="btn btn-primary" type="button" id="send-message" style="border: none;">Envoyer</button>
+        <input type="text" class="form-control" placeholder="Tapez votre message..." id="message-input" style="border-right: none; outline: none;" disabled>
+        <button class="btn btn-primary" type="button" id="send-message" style="border: none;" disabled>Envoyer</button>
       </div>
     </div>
   </div>
 </div>
+<script>
+let currentProjectId = null;
+let userName = "{{ user_first_name|default('Vous') }}";
+
+// Load projects in sidebar
+function loadProjects() {
+  fetch('/api/user_projects')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const list = document.getElementById('project-list');
+        list.innerHTML = '';
+        data.projects.forEach(p => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.style.cursor = 'pointer';
+          li.textContent = p.name;
+          li.onclick = () => selectProject(p.project_id, p.name);
+          list.appendChild(li);
+        });
+      }
+    });
+}
+
+// Select a project and load messages
+function selectProject(projectId, projectName) {
+  currentProjectId = projectId;
+  document.getElementById('message-input').disabled = false;
+  document.getElementById('send-message').disabled = false;
+  loadMessages(projectId);
+}
+
+// Load messages for a project
+function loadMessages(projectId) {
+  fetch('/api/messages/' + projectId)
+    .then(r => r.json())
+    .then(data => {
+      const chat = document.getElementById('chat-history');
+      chat.innerHTML = '';
+      if (data.success && data.messages.length > 0) {
+        data.messages.forEach(msg => {
+          const div = document.createElement('div');
+          div.className = 'mb-3' + (msg.sender_name === userName ? ' text-end' : '');
+          div.style.maxWidth = '60%';
+          if (msg.sender_name === userName) div.style.marginLeft = 'auto';
+          const bubble = document.createElement('div');
+          bubble.style.background = msg.sender_name === userName ? '#4262e2' : '#fff';
+          bubble.style.color = msg.sender_name === userName ? '#fff' : '#000';
+          bubble.style.padding = '10px 15px';
+          bubble.style.borderRadius = '15px';
+          bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          bubble.innerHTML = `<strong>${msg.sender_name === userName ? 'Vous' : msg.sender_name}</strong>
+            <p class="mb-0" style="margin: 5px 0;">${msg.content}</p>
+            <small class="text-muted">${msg.timestamp}</small>`;
+          div.appendChild(bubble);
+          chat.appendChild(div);
+        });
+        chat.scrollTop = chat.scrollHeight;
+      } else {
+        chat.innerHTML = '<div class="text-center text-muted mt-5">Aucun message pour ce projet.</div>';
+      }
+    });
+}
+
+// Send a message
+document.getElementById('send-message').onclick = function() {
+  const input = document.getElementById('message-input');
+  const content = input.value.trim();
+  if (!content || !currentProjectId) return;
+  fetch('/api/send_message', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({project_id: currentProjectId, content})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      input.value = '';
+      loadMessages(currentProjectId);
+    }
+  });
+};
+
+// Send message on Enter key
+document.getElementById('message-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('send-message').click();
+});
+
+// Initial load
+loadProjects();
+</script>
 {% endblock %}
