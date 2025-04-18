@@ -10,15 +10,20 @@
                 <div class="card-header bg-primary text-white p-3 d-flex justify-content-between align-items-center">
                     <h4 class="mb-0"><i class="fas fa-bell me-2"></i>Notifications</h4>
                     {% if notifications %}
-                        <button id="mark-all-read" class="btn btn-sm btn-light">
-                            <i class="fas fa-check-double me-1"></i>Tout marquer comme lu
-                        </button>
+                        <div class="btn-group" role="group">
+                            <button id="mark-all-read" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#markAllReadConfirmationModal">
+                                <i class="fas fa-check-double me-1"></i>Tout marquer comme lu
+                            </button>
+                            <button id="delete-all-notifications" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllConfirmationModal">
+                                <i class="fas fa-trash-alt me-1"></i>Tout supprimer
+                            </button>
+                        </div>
                     {% endif %}
                 </div>
                 <div class="card-body p-0">
                     {% if notifications %}
                         <div class="notification-list">
-                            {% for notification in notifications %}
+                            {% for notification in notifications | reverse %}
                                 <div class="notification-item p-3 border-bottom {% if not notification.is_read %}unread{% endif %}" 
                                      id="notification-{{ notification.notification_id }}">
                                     <div class="d-flex">
@@ -92,7 +97,7 @@
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="text-center p-5">
+                        <div class="text-center p-5" id="no-notifications-message">
                             <div class="mb-4">
                                 <i class="fas fa-bell-slash fa-4x text-muted"></i>
                             </div>
@@ -101,6 +106,63 @@
                         </div>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Confirmation Modal -->
+<div class="modal fade" id="rejectConfirmationModal" tabindex="-1" aria-labelledby="rejectConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="rejectConfirmationModalLabel">Confirmer le Refus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir refuser cette invitation au projet ?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="confirm-reject-btn">Refuser l'Invitation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mark All Read Confirmation Modal -->
+<div class="modal fade" id="markAllReadConfirmationModal" tabindex="-1" aria-labelledby="markAllReadConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="markAllReadConfirmationModalLabel">Confirmer l'Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir marquer toutes les notifications comme lues ?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirm-mark-all-read-btn">Marquer comme Lu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete All Confirmation Modal -->
+<div class="modal fade" id="deleteAllConfirmationModal" tabindex="-1" aria-labelledby="deleteAllConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteAllConfirmationModalLabel">Confirmer la Suppression</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir supprimer <strong>toutes</strong> vos notifications ? Cette action est irréversible.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-all-btn">Supprimer Tout</button>
             </div>
         </div>
     </div>
@@ -152,21 +214,79 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Mark all as read button
-    const markAllReadBtn = document.getElementById('mark-all-read');
-    if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', function() {
-            if (confirm('Marquer toutes les notifications comme lues?')) {
-                const unreadNotifications = document.querySelectorAll('.notification-item.unread');
-                unreadNotifications.forEach(item => {
-                    const notificationId = item.id.replace('notification-', '');
-                    markAsRead(notificationId, item);
-                });
-            }
+    // Get modal instances
+    const markAllReadModalEl = document.getElementById('markAllReadConfirmationModal');
+    const markAllReadModal = markAllReadModalEl ? new bootstrap.Modal(markAllReadModalEl) : null;
+    const deleteAllModalEl = document.getElementById('deleteAllConfirmationModal');
+    const deleteAllModal = deleteAllModalEl ? new bootstrap.Modal(deleteAllModalEl) : null;
+
+    // Confirm Mark all as read button (inside modal)
+    const confirmMarkAllReadBtn = document.getElementById('confirm-mark-all-read-btn');
+    if (confirmMarkAllReadBtn && markAllReadModal) {
+        confirmMarkAllReadBtn.addEventListener('click', function() {
+            const unreadNotifications = document.querySelectorAll('.notification-item.unread');
+            let promises = [];
+            unreadNotifications.forEach(item => {
+                const notificationId = item.id.replace('notification-', '');
+                // Collect promises from markAsRead calls
+                promises.push(markAsRead(notificationId, item, false)); // Pass false to prevent individual count updates
+            });
+
+            // Wait for all markAsRead operations to complete then update count once
+            Promise.all(promises).then(() => {
+                updateNotificationCount();
+            }).catch(error => {
+                console.error("Error marking all notifications as read:", error);
+                // Handle potential errors if needed
+            });
+
+            markAllReadModal.hide();
         });
     }
 
-    // Accept invitation
+    // Confirm Delete all notifications button (inside modal)
+    const confirmDeleteAllBtn = document.getElementById('confirm-delete-all-btn');
+    if (confirmDeleteAllBtn && deleteAllModal) {
+        confirmDeleteAllBtn.addEventListener('click', function() {
+            fetch('/delete_all_notifications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const notificationList = document.querySelector('.notification-list');
+                    const noNotificationsMessage = document.getElementById('no-notifications-message');
+                    if (notificationList) {
+                        notificationList.innerHTML = ''; // Clear the list
+                    }
+                    if (noNotificationsMessage) {
+                        noNotificationsMessage.style.display = 'block'; 
+                    }
+                    const buttonGroup = document.querySelector('.btn-group');
+                    if (buttonGroup) {
+                        buttonGroup.remove();
+                    }
+                    updateNotificationCount(); // Update count in navbar
+                    // Optionally show a success toast/alert here instead of alert()
+                    // alert('Toutes les notifications ont été supprimées.'); 
+                } else {
+                    alert('Erreur lors de la suppression des notifications: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Une erreur est survenue lors de la suppression des notifications.');
+            })
+            .finally(() => {
+                 deleteAllModal.hide();
+            });
+        });
+    }
+
+    // Accept invitation (no change needed here)
     document.querySelectorAll('.accept-invitation').forEach(button => {
         button.addEventListener('click', function() {
             const notificationId = this.getAttribute('data-notification-id');
@@ -208,43 +328,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Reject invitation
+    // Reject invitation - Show Modal (no change needed here)
     document.querySelectorAll('.reject-invitation').forEach(button => {
         button.addEventListener('click', function() {
             const notificationId = this.getAttribute('data-notification-id');
-            
-            if (confirm('Êtes-vous sûr de vouloir refuser cette invitation?')) {
-                fetch('/respond_invitation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        notification_id: notificationId,
-                        response: 'reject'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const notificationItem = document.getElementById(`notification-${notificationId}`);
-                        const actionsDiv = notificationItem.querySelector('.invitation-actions');
-                        actionsDiv.innerHTML = '<span class="badge bg-danger rounded-pill"><i class="fas fa-times me-1"></i>Invitation refusée</span>';
-                        notificationItem.classList.remove('unread');
-                        updateNotificationCount();
-                    } else {
-                        alert('Erreur: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Une erreur est survenue lors du traitement de votre demande.');
-                });
-            }
+            const rejectModal = new bootstrap.Modal(document.getElementById('rejectConfirmationModal'));
+            // Store notificationId on the confirm button inside the modal
+            document.getElementById('confirm-reject-btn').dataset.notificationId = notificationId;
+            rejectModal.show();
         });
     });
-    
-    // Mark as read
+
+    // Confirm Rejection from Modal (no change needed here)
+    document.getElementById('confirm-reject-btn').addEventListener('click', function() {
+        const notificationId = this.dataset.notificationId;
+        const rejectModal = bootstrap.Modal.getInstance(document.getElementById('rejectConfirmationModal'));
+
+        fetch('/respond_invitation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                notification_id: notificationId,
+                response: 'reject'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            rejectModal.hide(); // Hide the modal first
+            if (data.success) {
+                const notificationItem = document.getElementById(`notification-${notificationId}`);
+                const actionsDiv = notificationItem.querySelector('.invitation-actions');
+                actionsDiv.innerHTML = '<span class="badge bg-danger rounded-pill"><i class="fas fa-times me-1"></i>Invitation refusée</span>';
+                notificationItem.classList.remove('unread');
+                updateNotificationCount();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            rejectModal.hide();
+            console.error('Error:', error);
+            alert('Une erreur est survenue lors du traitement de votre demande.');
+        });
+    });
+
+    // Mark as read button for individual notifications (no change needed here)
     document.querySelectorAll('.mark-read').forEach(button => {
         button.addEventListener('click', function() {
             const notificationId = this.getAttribute('data-notification-id');
@@ -253,8 +383,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    function markAsRead(notificationId, notificationItem) {
-        fetch(`/mark_notification_read/${notificationId}`, {
+    // Modified markAsRead to return the fetch promise and optionally skip count update
+    function markAsRead(notificationId, notificationItem, updateCount = true) {
+        return fetch(`/mark_notification_read/${notificationId}`, { // Return the promise
             method: 'POST'
         })
         .then(response => response.json())
@@ -263,14 +394,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 notificationItem.classList.remove('unread');
                 const markReadBtn = notificationItem.querySelector('.mark-read');
                 if (markReadBtn) markReadBtn.parentElement.remove();
-                updateNotificationCount();
+                if (updateCount) { // Only update count if requested
+                    updateNotificationCount();
+                }
+            } else {
+                 // Throw an error if not successful to be caught by Promise.all
+                 throw new Error(data.message || 'Failed to mark notification as read');
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+        // No catch here, let Promise.all handle it or individual calls if needed
     }
     
+    // Update notification count (no change needed here)
     function updateNotificationCount() {
         fetch('/notification_count')
             .then(response => response.json())

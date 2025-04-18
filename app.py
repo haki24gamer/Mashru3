@@ -1,28 +1,32 @@
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename  # Add this import
+from werkzeug.utils import secure_filename
 from datetime import date
-import mysql.connector
 from email.message import EmailMessage
 from flask_mail import Mail, Message
 import random
-import os  # Add this import
+import os
 from datetime import datetime, timedelta
-import time  # Add this import
+import time
+try:
+    import mysql.connector
+except ImportError:
+    # MySQL connector not installed
+    mysql = None
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/Mashru3'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
 app.config['SECRET_KEY'] = 'your_secret_key'
 db = SQLAlchemy(app)
 
 # Configure Flask-Mail for Gmail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Gmail SMTP server
-app.config['MAIL_PORT'] = 587  # Port for TLS
-app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'  # Replace with your Gmail address
-app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '  # Replace with your app password (not your Gmail password)
-app.config['MAIL_USE_TLS'] = True  # Use TLS
-app.config['MAIL_USE_SSL'] = False  # Don't use SSL
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'
+app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
 mail = Mail(app)
 
 # Configure uploads directories
@@ -39,18 +43,6 @@ os.makedirs(app.config['PROJECT_IMAGES_FOLDER'], exist_ok=True)
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# Function to create database if it doesn't exist
-def create_database():
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=""
-    )
-    cursor = conn.cursor()
-    cursor.execute("CREATE DATABASE IF NOT EXISTS Mashru3")
-    conn.close()
-
 
 # User table
 class User(db.Model):
@@ -84,8 +76,13 @@ class Task(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    priority = db.Column(db.Enum('low', 'medium', 'high'), nullable=False)
-    status = db.Column(db.Enum('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'), default='TODO')
+    priority = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), default='TODO')
+    
+    __table_args__ = (
+        db.CheckConstraint("priority IN ('low', 'medium', 'high')", name='check_task_priority'),
+        db.CheckConstraint("status IN ('TODO', 'IN_PROGRESS', 'REVIEW', 'DONE')", name='check_task_status'),
+    )
     start_date = db.Column(db.DATE, nullable=True)
     end_date = db.Column(db.DATE, nullable=True)
     finished_date = db.Column(db.DATE, nullable=True)
@@ -110,10 +107,10 @@ class Notification(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=True)
-    notification_type = db.Column(db.String(50), nullable=False)  # 'invitation', 'mention', etc.
+    notification_type = db.Column(db.String(50), nullable=False)
     content = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    is_accepted = db.Column(db.Boolean, nullable=True)  # For invitations: True=accepted, False=rejected, None=pending
+    is_accepted = db.Column(db.Boolean, nullable=True)
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Specification table
@@ -133,9 +130,16 @@ class Specification(db.Model):
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
     updated_at = db.Column(db.DATE, server_default=db.func.current_date(), onupdate=db.func.current_date())
 
+# Message table for group chat
+class Message(db.Model):
+    message_id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.project_id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now())
+
 # Ensure the database and tables are created
 with app.app_context():
-    create_database()  # Ensure database exists
     db.create_all()    # Create tables if they don't exist
 
 @app.route('/connexion', methods=['GET', 'POST'])
@@ -157,18 +161,36 @@ def inscription():
         name = request.form['name']
         email = request.form['email']
         password = generate_password_hash(request.form['password'])
-        
+
         # Generate OTP and store registration data in session
         otp = str(random.randint(100000, 999999))
         session['registration_data'] = {'name': name, 'email': email, 'password': password}
         session['otp'] = otp
-        
-        # Send OTP to user's email
-        msg = Message('OTP Verification', sender=app.config['MAIL_USERNAME'], recipients=[email])
-        msg.body = f'Your OTP is: {otp}'
-        mail.send(msg)
-        
-        return redirect(url_for('verify_otp'))
+
+        # Send OTP to user's email using HTML format
+        msg = Message('Vérification OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #4262e2;">Bienvenue chez Mashru3!</h2>
+            <p>Bonjour {name},</p>
+            <p>Merci de vous être inscrit. Veuillez utiliser le code OTP suivant pour vérifier votre adresse e-mail :</p>
+            <p style="font-size: 24px; font-weight: bold; color: #4262e2; text-align: center; background-color: #f0f8ff; padding: 15px; border-radius: 5px; letter-spacing: 3px;">
+                {otp}
+            </p>
+            <p>Ce code expirera bientôt. Si vous n'avez pas demandé cette inscription, veuillez ignorer cet e-mail.</p>
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 0.9em; color: #777;">Cordialement,<br>L'équipe Mashru3</p>
+        </div>
+        """
+        try:
+            mail.send(msg)
+            return redirect(url_for('verify_otp'))
+        except Exception as e:
+            # Log the error and inform the user
+            print(f"Error sending OTP email: {e}")
+            # You might want to add a flash message here to inform the user
+            return render_template('inscription.html', error="Impossible d'envoyer l'e-mail de vérification. Veuillez réessayer.")
+
     return render_template('inscription.html')
 
 @app.route('/verify_otp', methods=['GET', 'POST'])
@@ -191,6 +213,42 @@ def verify_otp():
         else:
             error = 'Invalid OTP'
     return render_template('verify_otp.html', error=error)
+
+@app.route('/resend_otp', methods=['POST'])
+def resend_otp():
+    if 'registration_data' not in session:
+        return jsonify({'success': False, 'message': 'Aucune donnée d\'inscription trouvée.'}), 400
+
+    try:
+        data = session['registration_data']
+        name = data['name']
+        email = data['email']
+
+        # Generate a new OTP
+        otp = str(random.randint(100000, 999999))
+        session['otp'] = otp # Update OTP in session
+
+        # Resend OTP email
+        msg = Message('Nouveau code OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #4262e2;">Votre nouveau code OTP Mashru3</h2>
+            <p>Bonjour {name},</p>
+            <p>Voici votre nouveau code de vérification :</p>
+            <p style="font-size: 24px; font-weight: bold; color: #4262e2; text-align: center; background-color: #f0f8ff; padding: 15px; border-radius: 5px; letter-spacing: 3px;">
+                {otp}
+            </p>
+            <p>Ce code expirera bientôt. Si vous n'avez pas demandé ce code, veuillez ignorer cet e-mail.</p>
+            <hr style="border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 0.9em; color: #777;">Cordialement,<br>L'équipe Mashru3</p>
+        </div>
+        """
+        mail.send(msg)
+        return jsonify({'success': True, 'message': 'OTP renvoyé avec succès.'})
+
+    except Exception as e:
+        print(f"Error resending OTP email: {e}")
+        return jsonify({'success': False, 'message': 'Erreur lors du renvoi de l\'OTP.'}), 500
 
 # Collection of collaboration and teamwork quotes
 COLLABORATION_QUOTES = [
@@ -364,38 +422,193 @@ def add_project():
     if request.method == 'POST':
         name = request.form['name']
         description = request.form['description']
-        image = request.form['image']
-        start_date = request.form['start_date']
-        end_date = request.form['end_date']
-        created_at = date.today()
-        new_project = Project(name=name, description=description, image=image, start_date=start_date, end_date=end_date, created_at=created_at)
+        start_date_str = request.form['start_date']
+        end_date_str = request.form['end_date']
+        
+        # Convert date strings to date objects
+        start_date = date.fromisoformat(start_date_str) if start_date_str else None
+        end_date = date.fromisoformat(end_date_str) if end_date_str else None
+        
+        image_path = None # Default to no image
+
+        # Handle file upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    # Create a secure filename
+                    timestamp = int(time.time())
+                    filename = secure_filename(f"project_{timestamp}_{file.filename}")
+                    filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
+                    
+                    # Save the file
+                    file.save(filepath)
+                    
+                    # Store the relative path for web access
+                    image_path = f"/static/uploads/project_images/{filename}"
+                except Exception as e:
+                    print(f"Error uploading project image: {str(e)}") 
+                    # Optionally add a flash message for the user
+
+        new_project = Project(
+            name=name, 
+            description=description, 
+            image=image_path, 
+            start_date=start_date, 
+            end_date=end_date
+            # created_at is handled by server_default
+        )
         db.session.add(new_project)
-        db.session.commit()
+        db.session.commit() # Commit to get the project_id
+
         user_id = session['user_id']
-        new_participate = Participate(role='Owner', user_id=user_id, project_id=new_project.project_id)
+        new_participate = Participate(
+            role='Owner', 
+            user_id=user_id, 
+            project_id=new_project.project_id
+            # created_at is handled by server_default
+        )
         db.session.add(new_participate)
         db.session.commit()
+        
         return redirect(url_for('projects'))
-    return render_template('add_project.html')
+        
+    # GET request just renders the template (or redirects if not logged in)
+    # The modal is part of the projects page, so usually we redirect back there.
+    # If accessed directly via GET (unlikely with the modal setup), redirect to projects.
+    return redirect(url_for('projects'))
 
 @app.route('/add_task', methods=['POST'])
 def add_task():
     if 'user_id' not in session:
         return redirect(url_for('connexion'))
     data = request.get_json()
+    
+    # Convert date strings to date objects, handle empty strings
+    start_date_str = data.get('start_date')
+    end_date_str = data.get('end_date')
+    
+    start_date = date.fromisoformat(start_date_str) if start_date_str else None
+    end_date = date.fromisoformat(end_date_str) if end_date_str else None
+    
     new_task = Task(
         project_id=data['project_id'],
         title=data['title'],
         description=data['description'],
         priority=data['priority'],
         status=data['status'],
-        start_date=data['start_date'],
-        end_date=data['end_date']
+        start_date=start_date, # Use converted date object or None
+        end_date=end_date     # Use converted date object or None
     )
     db.session.add(new_task)
     db.session.commit()
 
     return {'message': 'Task created successfully'}, 200
+
+@app.route('/get_task_assignees/<int:task_id>')
+def get_task_assignees(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    # Optional: Check if user has access to the project containing this task
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+    
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+    if not participation:
+         return jsonify({'success': False, 'message': 'Access denied to project'}), 403
+
+    assignees = Assigned.query.filter_by(task_id=task_id).all()
+    assignee_ids = [assignee.user_id for assignee in assignees]
+    return jsonify({'success': True, 'assignee_ids': assignee_ids})
+
+
+@app.route('/update_task_assignments', methods=['POST'])
+def update_task_assignments():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    task_id = data.get('task_id')
+    submitted_user_ids = set(map(int, data.get('user_ids', [])))
+
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+    project = Project.query.get(task.project_id)
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+    if not participation or participation.role not in ['Owner', 'Admin']:
+         return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    assigner = User.query.get(session['user_id'])
+
+    try:
+        current_assignments = Assigned.query.filter_by(task_id=task_id).all()
+        current_user_ids = set(assignment.user_id for assignment in current_assignments)
+
+        users_to_assign = submitted_user_ids - current_user_ids
+        users_to_unassign = current_user_ids - submitted_user_ids
+
+        # Assign new users and send notifications
+        for user_id in users_to_assign:
+            is_participant = Participate.query.filter_by(user_id=user_id, project_id=task.project_id).first()
+            if is_participant:
+                new_assignment = Assigned(user_id=user_id, task_id=task_id) 
+                db.session.add(new_assignment)
+
+                # Create notification for the newly assigned user
+                notification_content = f"{assigner.name} vous a assigné à la tâche '{task.title}' dans le projet '{project.name}'."
+                
+                new_notification = Notification(
+                    recipient_id=user_id,
+                    sender_id=session['user_id'],
+                    project_id=task.project_id,
+                    notification_type='task_assignment',
+                    content=notification_content,
+                    is_read=False
+                )
+                db.session.add(new_notification)
+
+        # Unassign users and send notifications
+        if users_to_unassign:
+            # Perform the deletion
+            Assigned.query.filter(
+                Assigned.task_id == task_id,
+                Assigned.user_id.in_(users_to_unassign)
+            ).delete(synchronize_session=False)
+
+            # Create notifications for unassigned users
+            for user_id in users_to_unassign:
+                # Check if user still exists (optional, but good practice)
+                unassigned_user = User.query.get(user_id)
+                if unassigned_user:
+                    notification_content = f"{assigner.name} vous a désassigné de la tâche '{task.title}' dans le projet '{project.name}'."
+                    
+                    unassign_notification = Notification(
+                        recipient_id=user_id,
+                        sender_id=session['user_id'],
+                        project_id=task.project_id,
+                        notification_type='task_unassignment', # New type
+                        content=notification_content,
+                        is_read=False
+                    )
+                    db.session.add(unassign_notification)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Assignments updated successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating assignments for task {task_id}: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while updating assignments.'}), 500
 
 @app.route('/add_member', methods=['POST'])
 def add_member():
@@ -419,21 +632,31 @@ def add_member():
         ).first()
         
         if existing_participation:
-            return {'message': 'User is already a member of this project'}, 400
+            return {'message': 'Cet utilisateur est déjà membre de ce projet'}, 400
         elif existing_invitation:
-            return {'message': 'An invitation has already been sent to this user'}, 400
+            return {'message': 'Une invitation a déjà été envoyée à cet utilisateur pour ce projet'}, 400
         else:
             # Get project and sender information
             project = Project.query.get(data['project_id'])
             sender = User.query.get(session['user_id'])
             
+            # Map English role to French for notification message
+            role_en = data['role']
+            role_fr_map = {
+                'Owner': 'Propriétaire',
+                'Admin': 'Administrateur',
+                'Member': 'Membre'
+            }
+            role_fr = role_fr_map.get(role_en, role_en) # Fallback to English if not found
+
             # Create a notification (invitation)
             new_notification = Notification(
                 recipient_id=user.user_id,
                 sender_id=session['user_id'],
                 project_id=data['project_id'],
                 notification_type='invitation',
-                content=f"{sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.",
+                # Use French role in the content
+                content=f"{sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {role_fr}.",
                 is_read=False,
                 is_accepted=None  # Pending
             )
@@ -446,23 +669,28 @@ def add_member():
             
             # Send an email notification if needed (optional)
             try:
-                msg = Message('Invitation à un projet', 
+                msg = Message('Invitation à rejoindre un projet Mashru3', 
                               sender=app.config['MAIL_USERNAME'], 
                               recipients=[user.email])
+                # Use French role in email as well
                 msg.body = f"""
                 Bonjour {user.name},
                 
-                {sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {data['role']}.
+                {sender.name} vous a invité à rejoindre le projet '{project.name}' en tant que {role_fr}.
                 
-                Connectez-vous à votre compte pour accepter ou refuser cette invitation.
+                Connectez-vous à votre compte Mashru3 pour accepter ou refuser cette invitation.
+                
+                Cordialement,
+                L'équipe Mashru3
                 """
                 mail.send(msg)
             except Exception as e:
-                print(f"Error sending email: {str(e)}")
+                print(f"Error sending invitation email: {str(e)}")
+                # Don't fail the whole request if email fails, but log it.
                 
             return {'message': 'Invitation sent successfully'}, 200
     else:
-        return {'message': 'User not found'}, 404
+        return {'message': 'Utilisateur non trouvé avec cet e-mail'}, 404
 
 @app.route('/notifications')
 def notifications():
@@ -509,11 +737,26 @@ def respond_invitation():
     
     try:
         if response == 'accept':
-            # Add user to project
+            # Extract role from notification content (best effort)
+            # This is fragile. Ideally, store the role ('Owner', 'Admin', 'Member') 
+            # in a separate field or reliably encoded in the content.
+            role_fr_map_reverse = {
+                'Propriétaire': 'Owner',
+                'Administrateur': 'Admin',
+                'Membre': 'Member'
+            }
+            role_en = 'Member' # Default role
+            try:
+                role_fr = notification.content.split(' en tant que ')[-1].replace('.', '')
+                role_en = role_fr_map_reverse.get(role_fr, 'Member') # Default to Member if extraction/mapping fails
+            except:
+                 pass # Keep default 'Member' if splitting fails
+
+            # Add user to project with the determined English role
             new_participate = Participate(
                 user_id=notification.recipient_id,
                 project_id=notification.project_id,
-                role=data.get('role', 'Member')  # Default role is Member if not specified
+                role=role_en # Use the determined English role
             )
             db.session.add(new_participate)
             notification.is_accepted = True
@@ -528,7 +771,8 @@ def respond_invitation():
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error responding to invitation: {str(e)}") # Log the error
+        return jsonify({'success': False, 'message': 'An error occurred while processing the invitation.'}), 500
 
 @app.route('/mark_notification_read/<int:notification_id>', methods=['POST'])
 def mark_notification_read(notification_id):
@@ -559,48 +803,6 @@ def inject_notifications_data():
         ).count()
         return {'notification_count': unread_count}
     return {'notification_count': 0}
-
-@app.route('/assign_user', methods=['POST'])
-def assign_user():
-    if 'user_id' not in session:
-        return redirect(url_for('connexion'))
-    data = request.get_json()
-    user_ids = data['user_ids']
-    task_id = data['task_id']
-    note = data.get('note', '')
-
-    # Get task and project information
-    task = Task.query.get(task_id)
-    if not task:
-        return {'message': 'Task not found'}, 404
-        
-    project = Project.query.get(task.project_id)
-    assigner = User.query.get(session['user_id'])  # Person doing the assignment
-
-    for user_id in user_ids:
-        # Check if the user is already assigned to the task
-        existing_assignment = Assigned.query.filter_by(user_id=user_id, task_id=task_id).first()
-        if not existing_assignment:
-            new_assignment = Assigned(user_id=user_id, task_id=task_id, note=note)
-            db.session.add(new_assignment)
-            
-            # Create notification for the user
-            notification_content = f"{assigner.name} vous a assigné à la tâche '{task.title}' dans le projet '{project.name}'."
-            if note:
-                notification_content += f" Note: {note}"
-                
-            new_notification = Notification(
-                recipient_id=user_id,
-                sender_id=session['user_id'],
-                project_id=task.project_id,
-                notification_type='task_assignment',
-                content=notification_content,
-                is_read=False
-            )
-            db.session.add(new_notification)
-
-    db.session.commit()
-    return {'message': 'User(s) assigned successfully'}, 200
 
 @app.route('/update_task_status', methods=['POST'])
 def update_task_status():
@@ -693,7 +895,7 @@ def project_detail(project_id):
     ).all()
     
     # Format participants data for the template
-    participants = [{'name': user.name, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
+    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
     
     # Determine the current user's role in this project
     user_participation = Participate.query.filter_by(
@@ -712,13 +914,37 @@ def project_detail(project_id):
         assigned_users = db.session.query(User).join(Assigned).filter(Assigned.task_id == task.task_id).all()
         task.assigned_users = assigned_users
 
+    # Get pending invitations for this project
+    pending_invitations = db.session.query(
+        Notification, User.email, User.name
+    ).join(
+        User, Notification.recipient_id == User.user_id
+    ).filter(
+        Notification.project_id == project_id,
+        Notification.notification_type == 'invitation',
+        Notification.is_accepted == None
+    ).all()
+
+    # Format pending invitations data
+    pending_invites_data = []
+    for notification, email, name in pending_invitations:
+        # Extract role from content (assuming format: "... as Role.")
+        role_str = notification.content.split(' en tant que ')[-1].replace('.', '') if ' en tant que ' in notification.content else 'N/A'
+        pending_invites_data.append({
+            'email': email,
+            'name': name,
+            'role': role_str,
+            'sent_at': notification.created_at
+        })
+
     return render_template(
         'project_detail.html', 
         project=project, 
         participants=participants, 
         tasks=tasks, 
         user_role=user_role,
-        is_admin=is_admin
+        is_admin=is_admin,
+        pending_invitations=pending_invites_data
     )
 
 @app.route('/update_project/<int:project_id>', methods=['POST'])
@@ -737,19 +963,32 @@ def update_project(project_id):
     
     try:
         project = Project.query.get_or_404(project_id)
+        old_image_path = project.image # Store the old image path
         
         # Handle form data
         if request.files and 'project_image' in request.files:
             file = request.files['project_image']
             if file and file.filename and allowed_file(file.filename):
                 # Create secure filename and save the file
-                filename = secure_filename(f"project_{project_id}_{file.filename}")
+                timestamp = int(time.time()) # Add timestamp for uniqueness
+                filename = secure_filename(f"project_{project_id}_{timestamp}_{file.filename}")
                 filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
                 file.save(filepath)
                 
                 # Update project image path
                 relative_path = f"/static/uploads/project_images/{filename}"
                 project.image = relative_path
+
+                # Delete the old image file if it exists and is different
+                if old_image_path and old_image_path != relative_path:
+                    try:
+                        # Construct the absolute path for the old image
+                        old_image_full_path = os.path.join(app.root_path, old_image_path.lstrip('/'))
+                        if os.path.exists(old_image_full_path):
+                            os.remove(old_image_full_path)
+                            print(f"Deleted old project image: {old_image_full_path}") # Optional: for logging
+                    except Exception as e:
+                        print(f"Error deleting old project image {old_image_path}: {str(e)}") # Log error but continue
         
         # Update other project data
         if request.form.get('name'):
@@ -781,9 +1020,13 @@ def update_member_role():
     data = request.get_json()
     project_id = data.get('project_id')
     target_user_id = data.get('user_id')
-    new_role = data.get('role')
+    new_role = data.get('role') # Expecting 'Owner', 'Admin', 'Member' from frontend
     
-    # Check if current user has permission
+    # Basic validation for expected roles
+    if new_role not in ['Owner', 'Admin', 'Member']:
+         return jsonify({'success': False, 'message': 'Invalid role specified'}), 400
+
+    # Check if current user has permission (based on English roles)
     current_user_participation = Participate.query.filter_by(
         user_id=session['user_id'],
         project_id=project_id
@@ -792,17 +1035,27 @@ def update_member_role():
     if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
-    # Check if target user is the owner (only owner can change owner's role)
+    # Check if target user exists and is part of the project
     target_participation = Participate.query.filter_by(
         user_id=target_user_id,
         project_id=project_id
     ).first()
+
+    if not target_participation:
+        return jsonify({'success': False, 'message': 'Target user not found in this project'}), 404
     
-    if target_participation.role == 'Owner' and current_user_participation.role != 'Owner':
-        return jsonify({'success': False, 'message': 'Cannot change owner role'}), 403
+    # Prevent non-owners from changing the owner's role or making someone else owner
+    if (target_participation.role == 'Owner' or new_role == 'Owner') and current_user_participation.role != 'Owner':
+        return jsonify({'success': False, 'message': 'Only the project owner can manage ownership'}), 403
     
+    # Prevent owner from changing their own role if they are the only owner
+    if target_participation.role == 'Owner' and int(target_user_id) == session['user_id']:
+        owner_count = Participate.query.filter_by(project_id=project_id, role='Owner').count()
+        if owner_count <= 1:
+             return jsonify({'success': False, 'message': 'Cannot change role, you are the only owner'}), 403
+
     try:
-        target_participation.role = new_role
+        target_participation.role = new_role # Update with English role
         db.session.commit()
         return jsonify({'success': True, 'message': 'Role updated successfully'})
     except Exception as e:
@@ -813,49 +1066,68 @@ def update_member_role():
 def remove_member():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
+
     data = request.get_json()
     project_id = data.get('project_id')
     target_user_id = data.get('user_id')
-    
+
     # Check if current user has permission
     current_user_participation = Participate.query.filter_by(
         user_id=session['user_id'],
         project_id=project_id
     ).first()
-    
+
     if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
-    
+
     # Prevent removing the owner
     target_participation = Participate.query.filter_by(
         user_id=target_user_id,
         project_id=project_id
     ).first()
-    
+
+    if not target_participation:
+         return jsonify({'success': False, 'message': 'Member not found in project'}), 404
+
     if target_participation.role == 'Owner':
         return jsonify({'success': False, 'message': 'Cannot remove project owner'}), 403
-    
+
     # Prevent self-removal
     if int(target_user_id) == session['user_id']:
         return jsonify({'success': False, 'message': 'Cannot remove yourself from the project'}), 400
-    
+
     try:
+        # Get project and remover details for notification
+        project = Project.query.get(project_id)
+        remover = User.query.get(session['user_id'])
+
         # Remove user's assignments in this project
         tasks = Task.query.filter_by(project_id=project_id).all()
         task_ids = [task.task_id for task in tasks]
-        
+
         if task_ids:
             assignments = Assigned.query.filter(
                 Assigned.user_id == target_user_id,
                 Assigned.task_id.in_(task_ids)
             ).all()
-            
+
             for assignment in assignments:
                 db.session.delete(assignment)
-        
+
         # Remove user from project
         db.session.delete(target_participation)
+
+        # Create notification for the removed user
+        removal_notification = Notification(
+            recipient_id=target_user_id,
+            sender_id=session['user_id'],
+            project_id=project_id,
+            notification_type='removal',
+            content=f"Vous avez été retiré du projet '{project.name}' par {remover.name}.",
+            is_read=False
+        )
+        db.session.add(removal_notification)
+
         db.session.commit()
         return jsonify({'success': True, 'message': 'Member removed successfully'})
     except Exception as e:
@@ -1192,10 +1464,84 @@ def groupes():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    
-    # Here you would typically fetch the user's groups from the database
-    # For now, we'll just render a template
-    return render_template('groupes.html')
+    # Fetch user's projects for sidebar
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    return render_template('messagerie.html', projects=user_projects)
+
+# API endpoint: Get user's projects (for sidebar)
+@app.route('/api/user_projects')
+def api_user_projects():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    user_id = session['user_id']
+    projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    result = [{'project_id': p.project_id, 'name': p.name} for p in projects]
+    return jsonify({'success': True, 'projects': result})
+
+# API endpoint: Get messages for a project
+@app.route('/api/messages/<int:project_id>')
+def api_get_messages(project_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    # Check user is a participant
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    if not participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    messages = Message.query.filter_by(project_id=project_id).order_by(Message.timestamp.asc()).all()
+    result = []
+    for msg in messages:
+        sender = User.query.get(msg.sender_id)
+        result.append({
+            'message_id': msg.message_id,
+            'sender_id': msg.sender_id,
+            'sender_name': sender.name if sender else "Utilisateur",
+            'content': msg.content,
+            'timestamp': msg.timestamp.strftime('%H:%M')
+        })
+    return jsonify({'success': True, 'messages': result})
+
+# API endpoint: Send a message
+@app.route('/api/send_message', methods=['POST'])
+def api_send_message():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    data = request.get_json()
+    project_id = data.get('project_id')
+    content = data.get('content', '').strip()
+    if not project_id or not content:
+        return jsonify({'success': False, 'message': 'Project and content required'}), 400
+    # Check user is a participant
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    if not participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    msg = Message(
+        project_id=project_id,
+        sender_id=session['user_id'],
+        content=content
+    )
+    db.session.add(msg)
+    db.session.commit()
+    sender = User.query.get(session['user_id'])
+    return jsonify({
+        'success': True,
+        'message': {
+            'message_id': msg.message_id,
+            'sender_id': msg.sender_id,
+            'sender_name': sender.name if sender else "Vous",
+            'content': msg.content,
+            'timestamp': msg.timestamp.strftime('%H:%M')
+        }
+    })
 
 @app.route('/specifications')
 def specifications():
@@ -1466,7 +1812,22 @@ def update_specification(specification_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erreur lors de la mise à jour: {str(e)}'}), 500
 
-# ... Après les autres routes ...
+@app.route('/delete_all_notifications', methods=['POST'])
+def delete_all_notifications():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Non authentifié'}), 401
+    
+    user_id = session['user_id']
+    
+    try:
+        # Delete all notifications for the current user
+        Notification.query.filter_by(recipient_id=user_id).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Toutes les notifications ont été supprimées.'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting all notifications for user {user_id}: {str(e)}") # Log the error
+        return jsonify({'success': False, 'message': 'Une erreur est survenue lors de la suppression.'}), 500
 
 @app.route('/diagnostic')
 def diagnostic():
@@ -1529,8 +1890,6 @@ def diagnostic():
         db_status=db_status,
         system_info=system_info
     )
-
-# ... Reste du code ...
 
 if __name__ == '__main__':
     with app.app_context():

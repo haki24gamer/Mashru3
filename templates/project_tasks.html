@@ -27,7 +27,7 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
@@ -62,7 +62,7 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
@@ -97,7 +97,7 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
@@ -132,7 +132,7 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); setTaskId('{{ task.task_id }}'); $('#assignUserModal').modal('show');">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
@@ -307,34 +307,23 @@
 
 <!-- Assign User Modal -->
 <div class="modal fade" id="assignUserModal" tabindex="-1" role="dialog" aria-labelledby="assignUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="assignUserModalLabel">Assigner un utilisateur</h5>
+                <h5 class="modal-title" id="assignUserModalLabel">Assigner/Désassigner des utilisateurs</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <form id="assignUserForm">
-                    <div class="form-group">
-                        <label for="taskUser">Utilisateur</label>
-                        <select class="form-control" id="taskUser" multiple>
-                            {% for participant in participants %}
-                                <option value="{{ participant.user_id }}">{{ participant.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="note">Note</label>
-                        <input type="text" class="form-control" id="note" name="note">
-                    </div>
-                    <input type="hidden" id="task_id" name="task_id">
-                </form>
+                <div id="participant-list">
+                    <p class="text-center text-muted">Chargement des participants...</p>
+                </div>
+                <input type="hidden" id="assign_task_id" name="task_id">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="submitAssignUserForm()">Assigner un utilisateur</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="submitAssignUserForm()">Mettre à jour les assignations</button>
             </div>
         </div>
     </div>
@@ -388,15 +377,79 @@
 </div>
 
 <script>
+const projectParticipants = {{ participants | tojson }};
+
 let taskStatus = 'TODO';
 
 function setTaskStatus(status) {
     taskStatus = status;
 }
 
-function setTaskId(taskId) {
-    document.getElementById('task_id').value = taskId;
+async function openAssignModal(taskId) {
+    document.getElementById('assign_task_id').value = taskId;
+    const participantListDiv = document.getElementById('participant-list');
+    participantListDiv.innerHTML = '<p class="text-center text-muted">Chargement...</p>';
+
+    try {
+        const response = await fetch(`/get_task_assignees/${taskId}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            participantListDiv.innerHTML = `<p class="text-danger">Erreur: ${data.message}</p>`;
+            $('#assignUserModal').modal('show');
+            return;
+        }
+
+        const currentAssigneeIds = new Set(data.assignee_ids);
+        participantListDiv.innerHTML = '';
+
+        if (projectParticipants.length === 0) {
+             participantListDiv.innerHTML = '<p class="text-center text-muted">Aucun participant dans ce projet.</p>';
+        }
+
+        projectParticipants.forEach(participant => {
+            const isAssigned = currentAssigneeIds.has(participant.user_id);
+            const action = isAssigned ? 'unassign' : 'assign';
+            const btnClass = isAssigned ? 'btn-outline-danger' : 'btn-success';
+            const btnText = isAssigned ? 'Désassigner' : 'Assigner';
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'd-flex justify-content-between align-items-center mb-2 p-2 border rounded';
+            itemDiv.innerHTML = `
+                <span>${participant.name} (${participant.email})</span>
+                <button type="button" class="btn btn-sm ${btnClass} toggle-assign-btn" data-user-id="${participant.user_id}" data-action="${action}">
+                    ${btnText}
+                </button>
+            `;
+            participantListDiv.appendChild(itemDiv);
+        });
+
+    } catch (error) {
+        console.error('Error fetching or building assignees list:', error);
+        participantListDiv.innerHTML = `<p class="text-danger">Erreur lors du chargement des assignations.</p>`;
+    } finally {
+        $('#assignUserModal').modal('show');
+    }
 }
+
+document.getElementById('participant-list').addEventListener('click', function(event) {
+    if (event.target.classList.contains('toggle-assign-btn')) {
+        const button = event.target;
+        const currentAction = button.getAttribute('data-action');
+
+        if (currentAction === 'assign') {
+            button.setAttribute('data-action', 'unassign');
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-danger');
+            button.textContent = 'Désassigner';
+        } else {
+            button.setAttribute('data-action', 'assign');
+            button.classList.remove('btn-outline-danger');
+            button.classList.add('btn-success');
+            button.textContent = 'Assigner';
+        }
+    }
+});
 
 $(document).ready(function(){
     $('[data-toggle="popover"]').popover({
@@ -406,15 +459,16 @@ $(document).ready(function(){
 });
 
 function submitAssignUserForm() {
-    const form = document.getElementById('assignUserForm');
-    const selectedUsers = Array.from(form.taskUser.selectedOptions).map(option => option.value);
+    const participantListDiv = document.getElementById('participant-list');
+    const assignedButtons = participantListDiv.querySelectorAll('button[data-action="unassign"]'); 
+    const selectedUserIds = Array.from(assignedButtons).map(button => button.getAttribute('data-user-id'));
+    
     const data = {
-        user_ids: selectedUsers,
-        note: form.note.value,
-        task_id: form.task_id.value
+        user_ids: selectedUserIds,
+        task_id: document.getElementById('assign_task_id').value
     };
 
-    fetch('/assign_user', {
+    fetch('/update_task_assignments', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -423,12 +477,16 @@ function submitAssignUserForm() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message === 'User(s) assigned successfully') {
+        if (data.success) {
             $('#assignUserModal').modal('hide');
             location.reload();
         } else {
-            alert('Failed to assign user: ' + data.message);
+            alert('Failed to update assignments: ' + data.message);
         }
+    })
+    .catch(error => {
+         console.error('Error updating assignments:', error);
+         alert('An error occurred while updating assignments.');
     });
 }
 
@@ -458,7 +516,7 @@ function createTask() {
     .then(data => {
         if (data.message === 'Task created successfully') {
             $('#newTaskModal').modal('hide');
-            location.reload(); // Reload the page to show the new task
+            location.reload();
         } else {
             alert('Failed to create task');
         }
@@ -470,15 +528,12 @@ function createTask() {
 }
 
 function editTask(taskId) {
-    // Prevent triggering drag event
     event.stopPropagation();
     
-    // Fetch task details
     fetch(`/get_task/${taskId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Populate the form
                 document.getElementById('editTaskId').value = data.task.task_id;
                 document.getElementById('editTaskTitle').value = data.task.title;
                 document.getElementById('editTaskDescription').value = data.task.description;
@@ -486,7 +541,6 @@ function editTask(taskId) {
                 document.getElementById('editTaskStartDate').value = data.task.start_date;
                 document.getElementById('editTaskEndDate').value = data.task.end_date;
                 
-                // Show the modal
                 $('#editTaskModal').modal('show');
             } else {
                 alert('Failed to fetch task details');
@@ -518,7 +572,7 @@ function updateTask() {
     .then(data => {
         if (data.success) {
             $('#editTaskModal').modal('hide');
-            location.reload(); // Refresh to show updated task
+            location.reload();
         } else {
             alert('Failed to update task: ' + data.message);
         }
@@ -528,3 +582,4 @@ function updateTask() {
     });
 }
 </script>
+``` 
