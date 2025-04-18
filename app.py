@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import date
 from email.message import EmailMessage
-from flask_mail import Mail, Message
+from flask_mail import Mail, Message as MailMessage
 import random
 import os
 from datetime import datetime, timedelta
@@ -168,7 +168,7 @@ def inscription():
         session['otp'] = otp
 
         # Send OTP to user's email using HTML format
-        msg = Message('Vérification OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg = MailMessage('Vérification OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
         msg.html = f"""
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <h2 style="color: #4262e2;">Bienvenue chez Mashru3!</h2>
@@ -229,7 +229,7 @@ def resend_otp():
         session['otp'] = otp # Update OTP in session
 
         # Resend OTP email
-        msg = Message('Nouveau code OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
+        msg = MailMessage('Nouveau code OTP - Mashru3', sender=app.config['MAIL_USERNAME'], recipients=[email])
         msg.html = f"""
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <h2 style="color: #4262e2;">Votre nouveau code OTP Mashru3</h2>
@@ -669,7 +669,7 @@ def add_member():
             
             # Send an email notification if needed (optional)
             try:
-                msg = Message('Invitation à rejoindre un projet Mashru3', 
+                msg = MailMessage('Invitation à rejoindre un projet Mashru3', 
                               sender=app.config['MAIL_USERNAME'], 
                               recipients=[user.email])
                 # Use French role in email as well
@@ -1308,7 +1308,7 @@ def forgot_password():
             
             # Send the email
             try:
-                msg = Message('Réinitialisation de mot de passe', 
+                msg = MailMessage('Réinitialisation de mot de passe', 
                               sender=app.config['MAIL_USERNAME'], 
                               recipients=[email])
                 msg.body = f'''Pour réinitialiser votre mot de passe, veuillez cliquer sur le lien suivant:
