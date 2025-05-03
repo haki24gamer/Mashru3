@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, session, jsonify
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -43,6 +43,12 @@ os.makedirs(app.config['PROJECT_IMAGES_FOLDER'], exist_ok=True)
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# Serve favicon from static folder
+@app.route('/favicon.ico')
+def favicon():
+    # Serve SVG logo as favicon
+    return send_from_directory(os.path.join(app.static_folder, 'images'), 'Logo-UD.svg', mimetype='image/svg+xml')
 
 # User table
 class User(db.Model):
