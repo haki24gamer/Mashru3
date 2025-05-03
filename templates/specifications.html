@@ -3,5 +3,160 @@
 {% block title %}Cahier des Charges{% endblock %}
 
 {% block content %}
-<!-- Cahier des Charges content removed -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Cahier des Charges</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSpecModal">Créer un Cahier des Charges</button>
+</div>
+{% if specifications and specifications|length > 0 %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Projet</th>
+            <th>Titre</th>
+            <th>Statut</th>
+            <th>Dernière Mise à Jour</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for spec in specifications %}
+        <tr>
+            <td>{{ spec.project_name }}</td>
+            <td>{{ spec.title }}</td>
+            <td>{{ spec.status }}</td>
+            <td>{{ spec.updated_at.strftime('%Y-%m-%d') }}</td>
+            <td>
+                <a href="{{ url_for('view_specification', specification_id=spec.specification_id) }}" class="btn btn-sm btn-info">Voir</a>
+                {% if spec.status == 'draft' %}
+                <a href="{{ url_for('edit_specification', specification_id=spec.specification_id) }}" class="btn btn-sm btn-secondary">Modifier</a>
+                {% endif %}
+                <button class="btn btn-sm btn-danger" onclick="deleteSpec({{ spec.specification_id }})">Supprimer</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Aucun cahier des charges disponible pour vos projets.</p>
+{% endif %}
+
+<!-- Modal: Create Specification -->
+<div class="modal fade" id="createSpecModal" tabindex="-1" aria-labelledby="createSpecModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="createSpecForm" method="post" action="{{ url_for('save_specification') }}" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createSpecModalLabel">Créer un Cahier des Charges</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="projectSelect" class="form-label">Projet</label>
+            <select id="projectSelect" name="project_id" class="form-select" required>
+              <option value="" disabled selected>Sélectionner un projet</option>
+              {% for project in projects %}
+              <option value="{{ project.project_id }}" data-description="{{ project.description|e }}">{{ project.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="titleInput" class="form-label">Titre</label>
+            <input type="text" class="form-control" id="titleInput" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="descriptionTextarea" class="form-label">Description</label>
+            <textarea class="form-control" id="descriptionTextarea" name="description"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="objectivesTextarea" class="form-label">Objectifs</label>
+            <textarea class="form-control" id="objectivesTextarea" name="objectives"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="requirementsTextarea" class="form-label">Exigences</label>
+            <textarea class="form-control" id="requirementsTextarea" name="requirements"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="constraintsTextarea" class="form-label">Contraintes</label>
+            <textarea class="form-control" id="constraintsTextarea" name="constraints"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="deliverablesTextarea" class="form-label">Livrables</label>
+            <textarea class="form-control" id="deliverablesTextarea" name="deliverables"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="timelineTextarea" class="form-label">Chronologie</label>
+            <textarea class="form-control" id="timelineTextarea" name="timeline"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+          <button type="button" class="btn btn-info" id="generateAI">Générer les contenus avec IA</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function deleteSpec(id) {
+  if (confirm('Voulez-vous vraiment supprimer ce cahier des charges ?')) {
+    fetch(`/delete_specification/${id}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { location.reload(); }
+        else { alert(data.message); }
+      });
+  }
+}
+
+// Auto-fill title and description when a project is selected
+const projectSelect = document.getElementById('projectSelect');
+projectSelect.addEventListener('change', function() {
+  const selected = this.options[this.selectedIndex];
+  const titleInput = document.getElementById('titleInput');
+  const descArea = document.getElementById('descriptionTextarea');
+  // Set title to project name and description to project description
+  titleInput.value = selected.text;
+  descArea.value = selected.dataset.description || '';
+});
+
+document.getElementById('generateAI').addEventListener('click', function() {
+  const select = document.getElementById('projectSelect');
+  const desc = select.options[select.selectedIndex]?.dataset.description || '';
+  if (!desc) {
+    alert('Description du projet indisponible.');
+    return;
+  }
+  // Disable button while fetching
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Génération en cours...';
+  fetch('{{ url_for('generate_spec_content') }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: desc })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.textContent = 'Générer les contenus avec IA';
+    if (!data.success) {
+      alert('Erreur IA: ' + (data.message || '')); return;
+    }
+    document.getElementById('descriptionTextarea').value = data.description || '';
+    document.getElementById('objectivesTextarea').value = data.objectives || '';
+    document.getElementById('requirementsTextarea').value = data.requirements || '';
+    document.getElementById('constraintsTextarea').value = data.constraints || '';
+    document.getElementById('deliverablesTextarea').value = data.deliverables || '';
+    document.getElementById('timelineTextarea').value = data.timeline || '';
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = 'Générer les contenus avec IA';
+    console.error(err);
+    alert('Erreur lors de la génération IA.');
+  });
+});
+</script>
 {% endblock %}

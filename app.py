@@ -14,6 +14,12 @@ try:
 except ImportError:
     # MySQL connector not installed
     mysql = None
+import openai
+from dotenv import load_dotenv
+load_dotenv()
+
+# Configure OpenAI API key from environment
+openai.api_key = os.getenv('OPENAI_API_KEY')  # Ensure OPENAI_API_KEY is set via .env or environment
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
@@ -1653,6 +1659,36 @@ def save_specification():
             'success': False,
             'message': f'Erreur lors de l\'enregistrement: {str(e)}'
         }), 500
+
+# New route to generate spec content via AI
+@app.route('/generate_spec_content', methods=['POST'])
+def generate_spec_content():
+    data = request.get_json() or {}
+    description = data.get('description', '')
+    if not description:
+        return jsonify({'success': False, 'message': 'Description manquante'}), 400
+    try:
+        # Call OpenAI ChatCompletion
+        prompt = (
+            "Vous êtes un assistant qui génère un cahier des charges structuré à partir d'une description de projet. "
+            "Répondez strictement par un objet JSON avec les clés: description, objectives, requirements, constraints, deliverables, timeline."
+        )
+        response = openai.chat.completions.create(
+            model='gpt-3.5-turbo',
+            messages=[
+                {'role': 'system', 'content': prompt},
+                {'role': 'user', 'content': description}
+            ],
+            temperature=0.7,
+            max_tokens=800
+        )
+        content = response.choices[0].message.content.strip()
+        # Parse JSON
+        import json
+        result = json.loads(content)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur IA: {str(e)}'}), 500
 
 @app.route('/specification/<int:specification_id>')
 def view_specification(specification_id):
