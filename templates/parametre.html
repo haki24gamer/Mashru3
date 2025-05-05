@@ -58,7 +58,7 @@
                 </div>
             </div>
             
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5>Modifier le mot de passe</h5>
                 </div>
@@ -81,7 +81,55 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Appearance Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Apparence</h5>
+                </div>
+                <div class="card-body">
+                    <p>Personnalisez l'apparence de l'application.</p>
+                    <button id="toggleDarkModeBtn" class="btn btn-secondary">
+                        <i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">brightness_6</i> Activer/Désactiver le mode sombre
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleDarkModeBtn');
+    const body = document.body;
+
+    // Function to apply theme based on preference
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            body.classList.add('dark-mode');
+            toggleBtn.innerHTML = '<i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">brightness_7</i> Désactiver le mode sombre'; // Sun icon
+        } else {
+            body.classList.remove('dark-mode');
+            toggleBtn.innerHTML = '<i class="material-icons-outlined" style="font-size: 18px; vertical-align: middle;">brightness_4</i> Activer le mode sombre'; // Moon icon
+        }
+    }
+
+    // Check initial preference from localStorage
+    const currentTheme = localStorage.getItem('theme') || 'light'; // Default to light
+    applyTheme(currentTheme);
+
+    // Handle button click
+    toggleBtn.addEventListener('click', function() {
+        let newTheme = 'light';
+        if (!body.classList.contains('dark-mode')) {
+            newTheme = 'dark';
+        }
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
+    });
+});
+</script>
 {% endblock %}
