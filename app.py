@@ -1550,25 +1550,13 @@ def specifications():
     
     user_id = session['user_id']
     
-    # Get user's projects for the dropdown menu
+    # Get user's projects for the dropdown menu in the modal
     user_projects = db.session.query(Project).join(Participate).filter(
         Participate.user_id == user_id
     ).all()
     
-    # Get existing specifications for the user's projects
-    project_ids = [project.project_id for project in user_projects]
-    
+    # Pass an empty list as specifications are not displayed anymore
     specifications_list = []
-    if project_ids:
-        specifications_list = Specification.query.filter(
-            Specification.project_id.in_(project_ids)
-        ).order_by(Specification.updated_at.desc()).all()
-        
-        # Add project name to each specification
-        for spec in specifications_list:
-            project = Project.query.get(spec.project_id)
-            if project:
-                spec.project_name = project.name
     
     return render_template('specifications.html', projects=user_projects, specifications=specifications_list)
 
@@ -1727,9 +1715,14 @@ def delete_specification(specification_id):
     try:
         # Supprimer le document associé si existant
         if specification.document_path:
-            document_path = os.path.join(app.root_path, 'static', specification.document_path.lstrip('/static/'))
-            if os.path.exists(document_path):
-                os.remove(document_path)
+            # Construct the absolute path carefully
+            document_full_path = os.path.join(app.root_path, specification.document_path.lstrip('/'))
+            if os.path.exists(document_full_path):
+                try:
+                    os.remove(document_full_path)
+                    print(f"Deleted specification document: {document_full_path}") # Optional logging
+                except Exception as e_remove:
+                    print(f"Error deleting specification document {document_full_path}: {str(e_remove)}") # Log error but continue
         
         # Supprimer la spécification
         db.session.delete(specification)
@@ -1757,12 +1750,12 @@ def update_specification(specification_id):
         return jsonify({'success': False, 'message': 'Vous n\'avez pas accès à ce cahier des charges'}), 403
     
     # Seuls le créateur, le propriétaire du projet ou un admin peuvent modifier
-    if specification.created_by != session['user_id'] and participation.role not in ['Owner', 'Admin']:
-        return jsonify({'success': False, 'message': 'Vous n\'avez pas les droits pour modifier ce document'}), 403
+    # Allow editing regardless of status for simplicity now, or adjust logic as needed
+    # if specification.created_by != session['user_id'] and participation.role not in ['Owner', 'Admin']:
+    #     return jsonify({'success': False, 'message': 'Vous n\'avez pas les droits pour modifier ce document'}), 403
     
-    # Seul un cahier en mode brouillon peut être modifié
-    if specification.status != 'draft' and specification.created_by != session['user_id'] and participation.role != 'Owner':
-        return jsonify({'success': False, 'message': 'Seuls les cahiers des charges en mode brouillon peuvent être modifiés'}), 403
+    # if specification.status != 'draft' and specification.created_by != session['user_id'] and participation.role != 'Owner':
+    #     return jsonify({'success': False, 'message': 'Seuls les cahiers des charges en mode brouillon peuvent être modifiés'}), 403
     
     try:
         # Récupérer les données du formulaire
@@ -1784,10 +1777,15 @@ def update_specification(specification_id):
             if file and file.filename:
                 # Supprimer l'ancien document s'il existe
                 if specification.document_path:
-                    old_document_path = os.path.join(app.root_path, 'static', specification.document_path.lstrip('/static/'))
-                    if os.path.exists(old_document_path):
-                        os.remove(old_document_path)
-                
+                    # Construct the absolute path carefully
+                    old_document_full_path = os.path.join(app.root_path, specification.document_path.lstrip('/'))
+                    if os.path.exists(old_document_full_path):
+                        try:
+                            os.remove(old_document_full_path)
+                            print(f"Deleted old specification document: {old_document_full_path}") # Optional logging
+                        except Exception as e_remove:
+                             print(f"Error deleting old specification document {old_document_full_path}: {str(e_remove)}") # Log error but continue
+
                 # Créer le répertoire pour les spécifications s'il n'existe pas
                 spec_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'specifications')
                 os.makedirs(spec_dir, exist_ok=True)
