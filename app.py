@@ -152,15 +152,30 @@ def connexion():
             session['user_id'] = user.user_id
             return redirect(url_for('dashboard'))
         else:
-            return "Invalid credentials"
-    return render_template('connexion.html')
+            # Pass error message to template
+            return render_template('connexion.html', error="Invalid credentials")
+    
+    # Check for existing_user message from inscription redirect
+    existing_user_message = None
+    if request.args.get('existing_user'):
+        existing_user_message = "Vous avez déjà un compte. Veuillez vous connecter."
+        
+    return render_template('connexion.html', existing_user_message=existing_user_message)
 
 @app.route('/inscription', methods=['GET', 'POST'])
 def inscription():
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
-        password = generate_password_hash(request.form['password'])
+        password_form = request.form['password']
+
+        # Check if user already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            # Redirect to login page with a message
+            return redirect(url_for('connexion', existing_user=True))
+
+        password = generate_password_hash(password_form)
 
         # Generate OTP and store registration data in session
         otp = str(random.randint(100000, 999999))

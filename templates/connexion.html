@@ -18,6 +18,19 @@
             <div class="col-md-6 d-flex align-items-center justify-content-center order-1 order-md-0">
                 <div class="w-100 px-3 px-md-0" style="max-width: 600px;">
                     <h1 class="text-left font-weight-bold mb-4 custom-heading">Connexion</h1>
+
+                    {% if existing_user_message %}
+                    <div class="alert alert-info" role="alert">
+                        {{ existing_user_message }}
+                    </div>
+                    {% endif %}
+
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+                    
                     <form action="/connexion" method="post">
                         <div class="form-group">
                             <label for="email">Adresse e-mail</label>
