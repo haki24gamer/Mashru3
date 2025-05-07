@@ -51,6 +51,8 @@ class User(db.Model):
     image = db.Column(db.String(255))
     password = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DATE, server_default=db.func.current_date())  # Add created_at field
 
 # Project table
 class Project(db.Model):
@@ -141,6 +143,226 @@ class Message(db.Model):
 # Ensure the database and tables are created
 with app.app_context():
     db.create_all()    # Create tables if they don't exist
+
+# Admin routes
+@app.route('/admin')
+def admin_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    # Get statistics for admin dashboard
+    total_users = User.query.count()
+    total_projects = Project.query.count()
+    total_tasks = Task.query.count()
+    
+    # Handle the case where some users might not have created_at field yet
+    try:
+        new_users_today = User.query.filter(User.created_at >= date.today()).count()
+    except:
+        new_users_today = 0  # Fallback if created_at isn't available on some users
+    
+    # Get recent users
+    recent_users = User.query.order_by(User.user_id.desc()).limit(5).all()
+    
+    # Get projects with most tasks
+    project_stats = db.session.query(
+        Project.project_id,
+        Project.name,
+        db.func.count(Task.task_id).label('task_count')
+    ).join(Task, Task.project_id == Project.project_id, isouter=True).group_by(
+        Project.project_id, Project.name
+    ).order_by(db.desc('task_count')).limit(5).all()
+    
+    return render_template(
+        'admin/dashboard.html',
+        total_users=total_users,
+        total_projects=total_projects,
+        total_tasks=total_tasks,
+        new_users_today=new_users_today,
+        recent_users=recent_users,
+        project_stats=project_stats
+    )
+
+@app.route('/admin/users')
+def admin_users():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    # Get all users with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    users = User.query.paginate(page=page, per_page=per_page)
+    
+    return render_template('admin/users.html', users=users)
+
+@app.route('/admin/projects')
+def admin_projects():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    # Get all projects with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    projects = Project.query.paginate(page=page, per_page=per_page)
+    
+    return render_template('admin/projects.html', projects=projects)
+
+@app.route('/admin/settings')
+def admin_settings():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    return render_template('admin/settings.html')
+
+@app.route('/admin/promote_admin', methods=['POST'])
+def promote_admin():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Check if current user is an admin
+    current_user = User.query.get(session['user_id'])
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    data = request.get_json()
+    target_user_id = data.get('user_id')
+    is_admin = data.get('is_admin', False)
+    
+    if not target_user_id:
+        return jsonify({'success': False, 'message': 'User ID required'}), 400
+    
+    try:
+        target_user = User.query.get(target_user_id)
+        if not target_user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        target_user.is_admin = is_admin
+        db.session.commit()
+        
+        action = "granted" if is_admin else "revoked"
+        return jsonify({
+            'success': True,
+            'message': f'Admin privileges {action} for {target_user.name}'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/user/<int:user_id>', methods=['GET'])
+def admin_user_details(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    current_user = User.query.get(session['user_id'])
+    if not current_user or not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Get user's projects
+    user_projects = db.session.query(Project).join(Participate).filter(
+        Participate.user_id == user_id
+    ).all()
+    
+    # Get user's tasks
+    user_tasks = db.session.query(Task).join(Assigned).filter(
+        Assigned.user_id == user_id
+    ).all()
+    
+    return render_template('admin/user_details.html', user=user, projects=user_projects, tasks=user_tasks)
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+def admin_delete_user(user_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Check if current user is an admin
+    current_user = User.query.get(session['user_id'])
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    # Prevent self-deletion
+    if user_id == session['user_id']:
+        return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
+    
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        # Delete user's task assignments
+        Assigned.query.filter_by(user_id=user_id).delete()
+        
+        # Delete user's project participations
+        Participate.query.filter_by(user_id=user_id).delete()
+        
+        # Delete notifications sent by or to the user
+        Notification.query.filter(
+            (Notification.sender_id == user_id) | (Notification.recipient_id == user_id)
+        ).delete()
+        
+        # Delete messages sent by the user
+        Message.query.filter_by(sender_id=user_id).delete()
+        
+        # Delete specifications created by the user
+        Specification.query.filter_by(created_by=user_id).delete()
+        
+        # Finally delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'User {user.name} deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/project/<int:project_id>', methods=['GET'])
+def admin_project_details(project_id):
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    current_user = User.query.get(session['user_id'])
+    if not current_user or not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    project = Project.query.get_or_404(project_id)
+    
+    # Get project participants
+    participants = db.session.query(User, Participate.role).join(
+        Participate, User.user_id == Participate.user_id
+    ).filter(
+        Participate.project_id == project_id
+    ).all()
+    
+    # Get project tasks
+    tasks = Task.query.filter_by(project_id=project_id).all()
+    
+    return render_template(
+        'admin/project_details.html',
+        project=project,
+        participants=participants,
+        tasks=tasks
+    )
 
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
