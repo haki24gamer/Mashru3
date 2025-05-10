@@ -4,8 +4,21 @@
             <div class="row mb-4">
                 <div class="col-12">
                     <h4 class="card-title">Description du Projet</h4>
+                </div>
+            </div>
+            <div class="row mb-4">
+                {% if project.image %}
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <img src="{{ url_for('static', filename=project.image.split('/static/')[-1]) if project.image.startswith('/static/') else project.image }}" alt="{{ project.name }} Image" class="img-fluid rounded" style="max-height: 250px; width: 100%; object-fit: cover;">
+                </div>
+                <div class="col-md-8">
                     <p class="card-text">{{ project.description }}</p>
                 </div>
+                {% else %}
+                <div class="col-12">
+                    <p class="card-text">{{ project.description }}</p>
+                </div>
+                {% endif %}
             </div>
             
             <div class="row">
