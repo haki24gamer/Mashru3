@@ -1,3 +1,6 @@
+<!-- Add Font Awesome CSS for icon support. Ideally, this should be in your base HTML template's <head> section. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 <div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
@@ -90,7 +93,7 @@
                                     </td>
                                     <td>
                                         <button class="btn btn-danger btn-sm remove-member-btn" data-user-id="{{ participant.user_id }}">
-                                            <i class="fas fa-trash"></i>
+                                            <span class="fas fa-trash"></span>
                                         </button>
                                     </td>
                                 </tr>
@@ -149,41 +152,8 @@
                     </form>
                 </div>
             </div>
-
-            <!-- Project Settings Section -->
-            <div class="admin-section">
-                <h5 class="section-title"><i class="fas fa-cog me-2"></i>Paramètres du Projet</h5>
-
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="enable-task-dependencies">
-                            <label class="form-check-label" for="enable-task-dependencies">Activer les Dépendances de Tâches</label>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="enable-time-tracking">
-                            <label class="form-check-label" for="enable-time-tracking">Activer le Suivi du Temps</label>
-                        </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="enable-notifications">
-                            <label class="form-check-label" for="enable-notifications">Activer les Notifications par Email</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="project-visibility" class="form-label">Visibilité du Projet</label>
-                            <select class="form-select" id="project-visibility">
-                                <option value="private">Privé - Seulement les membres de l'équipe</option>
-                                <option value="public">Public - Toute personne avec le lien</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-3 d-flex justify-content-between">
-                    <button type="button" class="btn btn-primary" id="save-settings-btn">Enregistrer les Paramètres</button>
-                    <button type="button" class="btn btn-danger" id="delete-project-btn">Supprimer le Projet</button>
-                </div>
+            <div class="mt-3 d-flex justify-content-end">
+                <button type="button" class="btn btn-danger" id="delete-project-btn">Supprimer le Projet</button>
             </div>
 
         </div>
@@ -456,37 +426,6 @@
             removeMemberModal.hide();
             console.error('Erreur lors de la suppression du membre :', error);
             showConfirmation('Échec de la suppression du membre. Veuillez réessayer.', 'error');
-        });
-    });
-
-    // Enregistrer les paramètres du projet
-    document.getElementById('save-settings-btn').addEventListener('click', function() {
-        const projectId = {{ project.project_id }};
-        const settings = {
-            enable_task_dependencies: document.getElementById('enable-task-dependencies').checked,
-            enable_time_tracking: document.getElementById('enable-time-tracking').checked,
-            enable_notifications: document.getElementById('enable-notifications').checked,
-            project_visibility: document.getElementById('project-visibility').value
-        };
-
-        fetch(`/update_project_settings/${projectId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(settings)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showConfirmation('Paramètres enregistrés avec succès !', 'success');
-            } else {
-                showConfirmation(`Erreur : ${data.message}`, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur lors de l\'enregistrement des paramètres :', error);
-            showConfirmation('Échec de l\'enregistrement des paramètres. Veuillez réessayer.', 'error');
         });
     });
 

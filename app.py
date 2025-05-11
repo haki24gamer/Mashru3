@@ -90,11 +90,6 @@ class Task(db.Model):
     finished_date = db.Column(db.DATE, nullable=True)
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
-# Predecessor table
-class Predecessor(db.Model):
-    task_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
-    predecessor_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
-    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Assigned table
 class Assigned(db.Model):
@@ -632,25 +627,34 @@ def projects():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
-    total_projects = len(user_projects)
+    page = request.args.get('page', 1, type=int)
+    search_query = request.args.get('search_query', '')
+    per_page = 8 # Number of projects per page
+
+    # Base query for user's projects
+    query = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id)
+
+    if search_query:
+        query = query.filter(Project.name.ilike(f'%{search_query}%'))
     
-    # Calculate progress for each project
-    for project in user_projects:
-        # Get all tasks for this project
+    projects_page = query.order_by(Project.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Calculate progress for each project on the current page
+    for project in projects_page.items:
         tasks = Task.query.filter_by(project_id=project.project_id).all()
-        total_tasks = len(tasks)
+        total_tasks_count = len(tasks)
         
-        if total_tasks > 0:
-            # Count completed tasks
-            completed_tasks = Task.query.filter_by(project_id=project.project_id, status='DONE').count()
-            # Calculate percentage
-            project.progress = round((completed_tasks / total_tasks) * 100)
+        if total_tasks_count > 0:
+            completed_tasks_count = Task.query.filter_by(project_id=project.project_id, status='DONE').count()
+            project.progress = round((completed_tasks_count / total_tasks_count) * 100)
         else:
-            # No tasks yet
             project.progress = 0
-    
-    return render_template('project.html', projects=user_projects, total_projects=total_projects)
+            
+    return render_template(
+        'project.html', 
+        projects_page=projects_page, 
+        search_query=search_query
+    )
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
@@ -1132,7 +1136,7 @@ def project_detail(project_id):
     ).all()
     
     # Format participants data for the template
-    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
+    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role, 'profile_picture': user.image} for user, role in participants_data]
     
     # Determine the current user's role in this project
     user_participation = Participate.query.filter_by(
@@ -1371,35 +1375,6 @@ def remove_member():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/update_project_settings/<int:project_id>', methods=['POST'])
-def update_project_settings(project_id):
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    # Check if user has permission
-    participation = Participate.query.filter_by(
-        user_id=session['user_id'],
-        project_id=project_id
-    ).first()
-    
-    if not participation or participation.role not in ['Owner', 'Admin']:
-        return jsonify({'success': False, 'message': 'Permission denied'}), 403
-    
-    # In a real application, you might have a ProjectSettings table
-    # Here we'll just pretend we saved the settings
-    data = request.get_json()
-    
-    try:
-        # For demonstration purposes, we're not actually saving these settings
-        # In a real application, you'd store these in the database
-        return jsonify({
-            'success': True,
-            'message': 'Settings updated successfully',
-            'settings': data
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 @app.route('/delete_project/<int:project_id>', methods=['POST'])
 def delete_project(project_id):
     if 'user_id' not in session:
@@ -1420,9 +1395,7 @@ def delete_project(project_id):
         # Delete task assignments
         tasks = Task.query.filter_by(project_id=project_id).all()
         for task in tasks:
-            # Delete task predecessors
-            Predecessor.query.filter_by(task_id=task.task_id).delete()
-            Predecessor.query.filter_by(predecessor_id=task.task_id).delete()
+
             
             # Delete task assignments
             Assigned.query.filter_by(task_id=task.task_id).delete()

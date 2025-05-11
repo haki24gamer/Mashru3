@@ -5,19 +5,26 @@
             <ul class="list-group mt-3">
                 {% for participant in participants %}
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="font-weight-bold">{{ participant.name }}</div>
-                        <small class="text-muted">Rôle : 
-                            {% if participant.role == 'Owner' %}
-                                Propriétaire
-                            {% elif participant.role == 'Admin' %}
-                                Administrateur
-                            {% elif participant.role == 'Member' %}
-                                Membre
-                            {% else %}
-                                {{ participant.role }} {# Fallback for other roles #}
-                            {% endif %}
-                        </small>
+                    <div class="d-flex align-items-center">
+                        {% if participant.profile_picture %}
+                            <img src="{{ participant.profile_picture }}" alt="{{ participant.name }}" class="rounded-circle mr-2" style="width: 32px; height: 32px; object-fit: cover;">
+                        {% else %}
+                            <i class="material-icons-outlined mr-2" style="font-size: 32px; vertical-align: middle;">account_circle</i> {# Fallback icon #}
+                        {% endif %}
+                        <div>
+                            <div class="font-weight-bold">{{ participant.name }}</div>
+                            <small class="text-muted">Rôle : 
+                                {% if participant.role == 'Owner' %}
+                                    Propriétaire
+                                {% elif participant.role == 'Admin' %}
+                                    Administrateur
+                                {% elif participant.role == 'Member' %}
+                                    Membre
+                                {% else %}
+                                    {{ participant.role }} {# Fallback for other roles #}
+                                {% endif %}
+                            </small>
+                        </div>
                     </div>
                     <i class="material-icons-outlined">person</i>
                 </li>
