@@ -1375,35 +1375,6 @@ def remove_member():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/update_project_settings/<int:project_id>', methods=['POST'])
-def update_project_settings(project_id):
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
-    # Check if user has permission
-    participation = Participate.query.filter_by(
-        user_id=session['user_id'],
-        project_id=project_id
-    ).first()
-    
-    if not participation or participation.role not in ['Owner', 'Admin']:
-        return jsonify({'success': False, 'message': 'Permission denied'}), 403
-    
-    # In a real application, you might have a ProjectSettings table
-    # Here we'll just pretend we saved the settings
-    data = request.get_json()
-    
-    try:
-        # For demonstration purposes, we're not actually saving these settings
-        # In a real application, you'd store these in the database
-        return jsonify({
-            'success': True,
-            'message': 'Settings updated successfully',
-            'settings': data
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
 @app.route('/delete_project/<int:project_id>', methods=['POST'])
 def delete_project(project_id):
     if 'user_id' not in session:
