@@ -627,25 +627,34 @@ def projects():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    user_projects = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id).all()
-    total_projects = len(user_projects)
+    page = request.args.get('page', 1, type=int)
+    search_query = request.args.get('search_query', '')
+    per_page = 8 # Number of projects per page
+
+    # Base query for user's projects
+    query = db.session.query(Project).join(Participate).filter(Participate.user_id == user_id)
+
+    if search_query:
+        query = query.filter(Project.name.ilike(f'%{search_query}%'))
     
-    # Calculate progress for each project
-    for project in user_projects:
-        # Get all tasks for this project
+    projects_page = query.order_by(Project.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Calculate progress for each project on the current page
+    for project in projects_page.items:
         tasks = Task.query.filter_by(project_id=project.project_id).all()
-        total_tasks = len(tasks)
+        total_tasks_count = len(tasks)
         
-        if total_tasks > 0:
-            # Count completed tasks
-            completed_tasks = Task.query.filter_by(project_id=project.project_id, status='DONE').count()
-            # Calculate percentage
-            project.progress = round((completed_tasks / total_tasks) * 100)
+        if total_tasks_count > 0:
+            completed_tasks_count = Task.query.filter_by(project_id=project.project_id, status='DONE').count()
+            project.progress = round((completed_tasks_count / total_tasks_count) * 100)
         else:
-            # No tasks yet
             project.progress = 0
-    
-    return render_template('project.html', projects=user_projects, total_projects=total_projects)
+            
+    return render_template(
+        'project.html', 
+        projects_page=projects_page, 
+        search_query=search_query
+    )
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
