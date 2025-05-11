@@ -1,3 +1,6 @@
+<!-- Add Font Awesome CSS for icon support. Ideally, this should be in your base HTML template's <head> section. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 <div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
     <div class="card h-100 mt-4" style="background-color: #f0f8ff; border-radius: 10px;">
         <div class="card-body">
@@ -90,7 +93,7 @@
                                     </td>
                                     <td>
                                         <button class="btn btn-danger btn-sm remove-member-btn" data-user-id="{{ participant.user_id }}">
-                                            <i class="fas fa-trash"></i>
+                                            <span class="fas fa-trash"></span>
                                         </button>
                                     </td>
                                 </tr>
