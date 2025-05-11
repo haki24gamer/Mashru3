@@ -90,11 +90,6 @@ class Task(db.Model):
     finished_date = db.Column(db.DATE, nullable=True)
     created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
-# Predecessor table
-class Predecessor(db.Model):
-    task_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
-    predecessor_id = db.Column(db.Integer, db.ForeignKey('task.task_id'), primary_key=True)
-    created_at = db.Column(db.DATE, server_default=db.func.current_date())
 
 # Assigned table
 class Assigned(db.Model):
@@ -1420,9 +1415,7 @@ def delete_project(project_id):
         # Delete task assignments
         tasks = Task.query.filter_by(project_id=project_id).all()
         for task in tasks:
-            # Delete task predecessors
-            Predecessor.query.filter_by(task_id=task.task_id).delete()
-            Predecessor.query.filter_by(predecessor_id=task.task_id).delete()
+
             
             # Delete task assignments
             Assigned.query.filter_by(task_id=task.task_id).delete()
