@@ -96,7 +96,7 @@
                 <!-- Add empty state if no projects -->
                 {% if not projects_page.items %}
                 <div class="text-center py-5">
-                    <img src="{{ url_for('static', filename='images/Logo-UD.svg') }}" alt="No Projects" class="img-fluid mb-3" style="max-width: 120px; opacity: 0.5;">
+                    <img src="{{ url_for('static', filename='images/empty.png') }}" alt="" class="img-fluid mb-3" style="max-width: 120px; opacity: 0.5;">
                     {% if search_query %}
                     <h4 class="text-muted">Aucun projet trouvé pour "{{ search_query }}"</h4>
                     <p class="text-muted">Essayez une autre recherche ou <a href="{{ url_for('projects') }}">affichez tous les projets</a>.</p>
