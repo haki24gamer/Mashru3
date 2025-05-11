@@ -1127,7 +1127,7 @@ def project_detail(project_id):
     ).all()
     
     # Format participants data for the template
-    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role} for user, role in participants_data]
+    participants = [{'name': user.name, 'email': user.email, 'user_id': user.user_id, 'role': role, 'profile_picture': user.image} for user, role in participants_data]
     
     # Determine the current user's role in this project
     user_participation = Participate.query.filter_by(
