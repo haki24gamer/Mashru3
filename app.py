@@ -1458,6 +1458,9 @@ def parametre():
         action = request.form.get('action', '')
         
         if action == 'update_info':
+            # Store old image path before any changes
+            old_image_path = user.image
+
             # Update basic info
             user.name = request.form.get('name', user.name)
             
@@ -1490,29 +1493,46 @@ def parametre():
                         pending_email = new_email
                     except Exception as e:
                         error_message = "Impossible d'envoyer l'email de confirmation. Veuillez réessayer."
-            else:
-                # Handle profile picture upload
-                if 'profile_picture' in request.files:
-                    file = request.files['profile_picture']
-                    if file and file.filename:
-                        if allowed_file(file.filename):
-                            try:
-                                # Create a secure filename and save the file
-                                filename = secure_filename(f"user_{user_id}_{file.filename}")
-                                filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
-                                file.save(filepath)
-                                
-                                # Update the user's profile image path in the database
-                                relative_path = f"/static/uploads/profile_pics/{filename}"
-                                user.image = relative_path
-                            except Exception as e:
-                                error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
-                        else:
-                            error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
-                
-                if not error_message:
-                    db.session.commit()
-                    success_message = "Vos informations ont été mises à jour avec succès."
+            
+            # Handle profile picture upload
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file and file.filename:
+                    if allowed_file(file.filename):
+                        try:
+                            # Create a secure filename and save the file
+                            timestamp = int(time.time()) # Add timestamp for uniqueness
+                            filename = secure_filename(f"user_{user_id}_{timestamp}_{file.filename}")
+                            filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
+                            file.save(filepath)
+                            
+                            # Update the user's profile image path in the database
+                            relative_path = f"/static/uploads/profile_pics/{filename}"
+                            user.image = relative_path
+
+                            # Delete the old profile picture if it exists and is different
+                            if old_image_path and old_image_path != user.image:
+                                try:
+                                    # Construct the absolute path for the old image
+                                    old_image_full_path = os.path.join(app.root_path, old_image_path.lstrip('/'))
+                                    if os.path.exists(old_image_full_path):
+                                        os.remove(old_image_full_path)
+                                        print(f"Deleted old profile picture: {old_image_full_path}") # Optional: for logging
+                                except Exception as e_delete:
+                                    print(f"Error deleting old profile picture {old_image_path}: {str(e_delete)}") # Log error but continue
+                        except Exception as e:
+                            error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
+                    else:
+                        error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
+            
+            if not error_message and not email_change_pending: # Only commit if no email change is pending or if it's just name/pic update
+                db.session.commit()
+                success_message = "Vos informations ont été mises à jour avec succès."
+            elif not error_message and email_change_pending:
+                # If email change is pending, we still commit name changes if any.
+                # The email itself is not committed here.
+                db.session.commit() 
+                # The success_message for email verification is already set.
         
         elif action == 'update_password':
             # Update password
