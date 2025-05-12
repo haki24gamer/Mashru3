@@ -33,6 +33,9 @@
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -67,6 +70,9 @@
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
                                         </div>
                                     </div>
@@ -103,6 +109,9 @@
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -137,6 +146,9 @@
                                             </button>
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
+                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
                                         </div>
                                     </div>
@@ -255,6 +267,42 @@
         })
         .catch(error => {
             console.error('Error updating task status:', error);
+        });
+    }
+
+    function deleteTask(taskId) {
+        event.stopPropagation(); // Important to prevent other card events
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cette tâche ? Cette action est irréversible.')) {
+            return;
+        }
+
+        fetch(`/delete_task/${taskId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // If you use CSRF tokens, ensure they are included here
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const taskElement = document.getElementById(`task-${taskId}`);
+                if (taskElement) {
+                    taskElement.remove();
+                } else {
+                    // Fallback if the element isn't found (e.g., ID structure changed)
+                    // or if you prefer a full refresh to ensure UI consistency
+                    location.reload();
+                }
+                // You could add a more sophisticated notification here (e.g., a toast)
+                console.log('Task deleted successfully');
+            } else {
+                alert('Erreur lors de la suppression de la tâche: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting task:', error);
+            alert('Une erreur s\'est produite lors de la suppression de la tâche.');
         });
     }
 </script>
@@ -582,4 +630,3 @@ function updateTask() {
     });
 }
 </script>
-``` 

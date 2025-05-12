@@ -1118,6 +1118,35 @@ def update_task(task_id):
     else:
         return jsonify({'success': False, 'message': 'Task not found'}), 404
 
+@app.route('/delete_task/<int:task_id>', methods=['POST'])
+def delete_task(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    task = Task.query.get_or_404(task_id)
+    
+    # Check if user has permission (Owner or Admin of the project)
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+
+    if not participation or participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'Permission denied to delete this task'}), 403
+
+    try:
+        # Delete associated assignments first to maintain integrity
+        Assigned.query.filter_by(task_id=task_id).delete()
+        
+        # Delete the task
+        db.session.delete(task)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Task deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/project/<int:project_id>')
 def project_detail(project_id):
     if 'user_id' not in session:
