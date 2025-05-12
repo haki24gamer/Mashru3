@@ -1451,6 +1451,8 @@ def parametre():
     user = User.query.get(user_id)
     success_message = None
     error_message = None
+    email_change_pending = False
+    pending_email = None
     
     if request.method == 'POST':
         action = request.form.get('action', '')
@@ -1461,35 +1463,56 @@ def parametre():
             
             # Check if email is being changed and if it's not already taken
             new_email = request.form.get('email')
-            if new_email != user.email:
-                existing_user = User.query.filter_by(email=new_email).first()
-                if existing_user:
+            if new_email and new_email != user.email:
+                # check uniqueness
+                if User.query.filter_by(email=new_email).first():
                     error_message = "Cet e-mail est déjà utilisé par un autre compte."
                 else:
-                    user.email = new_email
-            
-            # Handle profile picture upload
-            if 'profile_picture' in request.files:
-                file = request.files['profile_picture']
-                if file and file.filename:
-                    if allowed_file(file.filename):
-                        try:
-                            # Create a secure filename and save the file
-                            filename = secure_filename(f"user_{user_id}_{file.filename}")
-                            filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
-                            file.save(filepath)
-                            
-                            # Update the user's profile image path in the database
-                            relative_path = f"/static/uploads/profile_pics/{filename}"
-                            user.image = relative_path
-                        except Exception as e:
-                            error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
-                    else:
-                        error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
-            
-            if not error_message:
-                db.session.commit()
-                success_message = "Vos informations ont été mises à jour avec succès."
+                    # generate token & store pending change
+                    token = ''.join(random.choices('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=32))
+                    session['email_change'] = {
+                        'new_email': new_email,
+                        'token': token,
+                        'expiry': (datetime.now() + timedelta(hours=1)).timestamp()
+                    }
+                    # send verification email
+                    confirm_link = url_for('confirm_email_change', token=token, _external=True)
+                    msg = MailMessage(
+                        'Confirmez votre nouvelle adresse email',
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[new_email]
+                    )
+                    msg.body = f"Bonjour {user.name},\n\nCliquez sur ce lien pour confirmer votre nouvelle adresse email :\n{confirm_link}\n\nCe lien expire dans 1 heure."
+                    try:
+                        mail.send(msg)
+                        success_message = "Un email de vérification a été envoyé à votre nouvelle adresse."
+                        email_change_pending = True
+                        pending_email = new_email
+                    except Exception as e:
+                        error_message = "Impossible d'envoyer l'email de confirmation. Veuillez réessayer."
+            else:
+                # Handle profile picture upload
+                if 'profile_picture' in request.files:
+                    file = request.files['profile_picture']
+                    if file and file.filename:
+                        if allowed_file(file.filename):
+                            try:
+                                # Create a secure filename and save the file
+                                filename = secure_filename(f"user_{user_id}_{file.filename}")
+                                filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
+                                file.save(filepath)
+                                
+                                # Update the user's profile image path in the database
+                                relative_path = f"/static/uploads/profile_pics/{filename}"
+                                user.image = relative_path
+                            except Exception as e:
+                                error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
+                        else:
+                            error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
+                
+                if not error_message:
+                    db.session.commit()
+                    success_message = "Vos informations ont été mises à jour avec succès."
         
         elif action == 'update_password':
             # Update password
@@ -1509,7 +1532,32 @@ def parametre():
                 db.session.commit()
                 success_message = "Votre mot de passe a été mis à jour avec succès."
     
-    return render_template('parametre.html', user=user, success_message=success_message, error_message=error_message)
+    # Show confirmation banner if link clicked
+    email_confirmed = request.args.get('email_confirmed') == '1'
+    return render_template(
+        'parametre.html',
+        user=user,
+        success_message=success_message,
+        error_message=error_message,
+        email_change_pending=email_change_pending,
+        pending_email=pending_email,
+        email_confirmed=email_confirmed
+    )
+
+@app.route('/confirm_email/<token>')
+def confirm_email_change(token):
+    if 'user_id' not in session or 'email_change' not in session:
+        return redirect(url_for('parametre'))
+    data = session['email_change']
+    # validate token & expiry
+    if data.get('token') != token or data.get('expiry', 0) < datetime.now().timestamp():
+        return redirect(url_for('parametre'))
+    user = User.query.get(session['user_id'])
+    if user:
+        user.email = data['new_email']
+        db.session.commit()
+    session.pop('email_change', None)
+    return redirect(url_for('parametre', email_confirmed=1))
 
 @app.route('/deconnexion', methods=['POST'])
 def deconnexion():
