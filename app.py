@@ -1424,22 +1424,48 @@ def parametre():
     user = User.query.get(user_id)
     success_message = None
     error_message = None
+    email_change_pending = False
+    pending_email = None
     
     if request.method == 'POST':
         action = request.form.get('action', '')
         
         if action == 'update_info':
+            # Store old image path before any changes
+            old_image_path = user.image
+
             # Update basic info
             user.name = request.form.get('name', user.name)
             
             # Check if email is being changed and if it's not already taken
             new_email = request.form.get('email')
-            if new_email != user.email:
-                existing_user = User.query.filter_by(email=new_email).first()
-                if existing_user:
+            if new_email and new_email != user.email:
+                # check uniqueness
+                if User.query.filter_by(email=new_email).first():
                     error_message = "Cet e-mail est déjà utilisé par un autre compte."
                 else:
-                    user.email = new_email
+                    # generate token & store pending change
+                    token = ''.join(random.choices('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=32))
+                    session['email_change'] = {
+                        'new_email': new_email,
+                        'token': token,
+                        'expiry': (datetime.now() + timedelta(hours=1)).timestamp()
+                    }
+                    # send verification email
+                    confirm_link = url_for('confirm_email_change', token=token, _external=True)
+                    msg = MailMessage(
+                        'Confirmez votre nouvelle adresse email',
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[new_email]
+                    )
+                    msg.body = f"Bonjour {user.name},\n\nCliquez sur ce lien pour confirmer votre nouvelle adresse email :\n{confirm_link}\n\nCe lien expire dans 1 heure."
+                    try:
+                        mail.send(msg)
+                        success_message = "Un email de vérification a été envoyé à votre nouvelle adresse."
+                        email_change_pending = True
+                        pending_email = new_email
+                    except Exception as e:
+                        error_message = "Impossible d'envoyer l'email de confirmation. Veuillez réessayer."
             
             # Handle profile picture upload
             if 'profile_picture' in request.files:
@@ -1448,21 +1474,38 @@ def parametre():
                     if allowed_file(file.filename):
                         try:
                             # Create a secure filename and save the file
-                            filename = secure_filename(f"user_{user_id}_{file.filename}")
+                            timestamp = int(time.time()) # Add timestamp for uniqueness
+                            filename = secure_filename(f"user_{user_id}_{timestamp}_{file.filename}")
                             filepath = os.path.join(app.config['PROFILE_PICS_FOLDER'], filename)
                             file.save(filepath)
                             
                             # Update the user's profile image path in the database
                             relative_path = f"/static/uploads/profile_pics/{filename}"
                             user.image = relative_path
+
+                            # Delete the old profile picture if it exists and is different
+                            if old_image_path and old_image_path != user.image:
+                                try:
+                                    # Construct the absolute path for the old image
+                                    old_image_full_path = os.path.join(app.root_path, old_image_path.lstrip('/'))
+                                    if os.path.exists(old_image_full_path):
+                                        os.remove(old_image_full_path)
+                                        print(f"Deleted old profile picture: {old_image_full_path}") # Optional: for logging
+                                except Exception as e_delete:
+                                    print(f"Error deleting old profile picture {old_image_path}: {str(e_delete)}") # Log error but continue
                         except Exception as e:
                             error_message = f"Erreur lors du téléchargement de l'image: {str(e)}"
                     else:
                         error_message = "Format d'image non supporté. Utilisez JPG, PNG ou GIF."
             
-            if not error_message:
+            if not error_message and not email_change_pending: # Only commit if no email change is pending or if it's just name/pic update
                 db.session.commit()
                 success_message = "Vos informations ont été mises à jour avec succès."
+            elif not error_message and email_change_pending:
+                # If email change is pending, we still commit name changes if any.
+                # The email itself is not committed here.
+                db.session.commit() 
+                # The success_message for email verification is already set.
         
         elif action == 'update_password':
             # Update password
@@ -1482,7 +1525,32 @@ def parametre():
                 db.session.commit()
                 success_message = "Votre mot de passe a été mis à jour avec succès."
     
-    return render_template('parametre.html', user=user, success_message=success_message, error_message=error_message)
+    # Show confirmation banner if link clicked
+    email_confirmed = request.args.get('email_confirmed') == '1'
+    return render_template(
+        'parametre.html',
+        user=user,
+        success_message=success_message,
+        error_message=error_message,
+        email_change_pending=email_change_pending,
+        pending_email=pending_email,
+        email_confirmed=email_confirmed
+    )
+
+@app.route('/confirm_email/<token>')
+def confirm_email_change(token):
+    if 'user_id' not in session or 'email_change' not in session:
+        return redirect(url_for('parametre'))
+    data = session['email_change']
+    # validate token & expiry
+    if data.get('token') != token or data.get('expiry', 0) < datetime.now().timestamp():
+        return redirect(url_for('parametre'))
+    user = User.query.get(session['user_id'])
+    if user:
+        user.email = data['new_email']
+        db.session.commit()
+    session.pop('email_change', None)
+    return redirect(url_for('parametre', email_confirmed=1))
 
 @app.route('/deconnexion', methods=['POST'])
 def deconnexion():

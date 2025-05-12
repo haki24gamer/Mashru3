@@ -36,6 +36,21 @@
 <div class="container-fluid">
     <h1 class="mt-4">Paramètres utilisateur</h1>
     <hr>
+    {# Show confirmation or pending banners #}
+    {% if email_confirmed %}
+        <div class="alert alert-success">Votre adresse email a été mise à jour avec succès.</div>
+    {% endif %}
+    {% if success_message %}
+        <div class="alert alert-success">{{ success_message }}</div>
+    {% endif %}
+    {% if error_message %}
+        <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+    {% if email_change_pending %}
+        <div class="alert alert-info">
+            Un email de vérification a été envoyé à {{ pending_email }}. Veuillez vérifier votre boîte de réception.
+        </div>
+    {% endif %}
     
     <div class="row mt-4">
         <!-- User Profile Section -->
