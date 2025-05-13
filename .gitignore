@@ -1,4 +1,4 @@
+instance
 static/uploads
 venv
 __pycache__
-instance/project.db
