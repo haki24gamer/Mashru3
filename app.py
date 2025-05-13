@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, session, jsonify
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify, send_file, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -366,6 +366,81 @@ def admin_project_details(project_id):
         participants=participants,
         tasks=tasks
     )
+
+@app.route('/admin/backup_database', methods=['GET'])
+def backup_database():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Check if user is an admin
+    user = db.session.get(User, session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+    
+    try:
+        # Path to the current database file
+        db_path = os.path.join(app.root_path, 'instance', 'project.db')
+        
+        # Create a timestamp for the filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Return the database as a downloadable file
+        return send_file(
+            db_path,
+            as_attachment=True,
+            download_name=f"mashru3_backup_{timestamp}.db",
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/import_database', methods=['POST'])
+def import_database():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    # Check if user is an admin
+    user = db.session.get(User, session['user_id'])
+    if not user or not user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    if 'database_file' not in request.files:
+        return redirect(url_for('admin_settings'))
+    
+    file = request.files['database_file']
+    if file.filename == '':
+        return redirect(url_for('admin_settings'))
+    
+    try:
+        # Get the current database path
+        db_path = os.path.join(app.root_path, 'instance', 'project.db')
+        
+        # Create a backup before replacing
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = os.path.join(app.root_path, 'instance', f'project_backup_{timestamp}.db')
+        
+        # Ensure the database connection is closed
+        db.session.close()
+        
+        # Create backup of current database
+        if os.path.exists(db_path):
+            with open(db_path, 'rb') as current_db:
+                with open(backup_path, 'wb') as backup_db:
+                    backup_db.write(current_db.read())
+        
+        # Replace with uploaded file
+        file.save(db_path)
+        
+        # Recreate database connection - use the recommended approach
+        db.engine.dispose()
+        
+        # Flash a success message that will be shown on redirect
+        flash('Base de données importée avec succès. Une sauvegarde de l\'ancienne base a été créée.', 'success')
+        
+        return redirect(url_for('admin_settings'))
+    except Exception as e:
+        flash(f'Erreur lors de l\'importation de la base de données: {str(e)}', 'error')
+        return redirect(url_for('admin_settings'))
 
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():

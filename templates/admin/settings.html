@@ -43,9 +43,42 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- New card for database import -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Importer une base de données</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('import_database') }}" method="POST" enctype="multipart/form-data" id="importDatabaseForm">
+                        <div class="mb-3">
+                            <label for="database_file" class="form-label">Sélectionner un fichier .db</label>
+                            <input class="form-control" type="file" id="database_file" name="database_file" accept=".db">
+                            <div class="form-text">Attention: Cette action remplacera la base de données actuelle. Assurez-vous de faire une sauvegarde d'abord.</div>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-upload me-2"></i> Importer et remplacer
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Display any flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container mt-3">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 {% endblock %}
 
 {% block scripts %}
@@ -60,13 +93,20 @@
         
         // Maintenance buttons
         document.getElementById('backupDbBtn').addEventListener('click', function() {
-            // In a real application, this would trigger a database backup
-            alert('Sauvegarde de la base de données lancée!');
+            // Redirect to the backup endpoint to download the database
+            window.location.href = "{{ url_for('backup_database') }}";
         });
         
         document.getElementById('maintenanceModeBtn').addEventListener('click', function() {
             // In a real application, this would toggle maintenance mode
             confirm('Êtes-vous sûr de vouloir activer le mode maintenance? Les utilisateurs ne pourront pas accéder à l\'application.');
+        });
+
+        // Add confirmation for database import
+        document.getElementById('importDatabaseForm').addEventListener('submit', function(e) {
+            if (!confirm('ATTENTION: Cette action va remplacer la base de données actuelle. Toutes les données seront écrasées. Continuer?')) {
+                e.preventDefault();
+            }
         });
     });
 </script>
