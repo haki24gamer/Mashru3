@@ -146,7 +146,7 @@ def admin_dashboard():
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_admin:
         return redirect(url_for('dashboard'))
     
@@ -189,7 +189,7 @@ def admin_users():
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_admin:
         return redirect(url_for('dashboard'))
     
@@ -206,7 +206,7 @@ def admin_projects():
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_admin:
         return redirect(url_for('dashboard'))
     
@@ -223,11 +223,19 @@ def admin_settings():
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_admin:
         return redirect(url_for('dashboard'))
     
     return render_template('admin/settings.html')
+
+@app.route('/update_email_config', methods=['POST'])
+def update_email_config():
+    new_email = request.form.get('emailFrom')
+    new_password = request.form.get('emailPassword')
+    app.config['MAIL_USERNAME'] = new_email
+    app.config['MAIL_PASSWORD'] = new_password
+    return redirect(url_for('admin_settings'))
 
 @app.route('/admin/promote_admin', methods=['POST'])
 def promote_admin():
@@ -235,7 +243,7 @@ def promote_admin():
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
     # Check if current user is an admin
-    current_user = User.query.get(session['user_id'])
+    current_user = db.session.get(User, session['user_id'])
     if not current_user or not current_user.is_admin:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
@@ -269,7 +277,7 @@ def admin_user_details(user_id):
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    current_user = User.query.get(session['user_id'])
+    current_user = db.session.get(User, session['user_id'])
     if not current_user or not current_user.is_admin:
         return redirect(url_for('dashboard'))
     
@@ -293,7 +301,7 @@ def admin_delete_user(user_id):
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
     # Check if current user is an admin
-    current_user = User.query.get(session['user_id'])
+    current_user = db.session.get(User, session['user_id'])
     if not current_user or not current_user.is_admin:
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
     
@@ -336,7 +344,7 @@ def admin_project_details(project_id):
         return redirect(url_for('connexion'))
     
     # Check if user is an admin
-    current_user = User.query.get(session['user_id'])
+    current_user = db.session.get(User, session['user_id'])
     if not current_user or not current_user.is_admin:
         return redirect(url_for('dashboard'))
     
@@ -507,7 +515,7 @@ def inject_quote():
 def inject_user_data():
     """Make user data available to all templates"""
     if 'user_id' in session:
-        user = User.query.get(session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if user:
             return {
                 'user_first_name': user.name,
@@ -521,7 +529,7 @@ def dashboard():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     
     # Select a random quote
     random_quote = random.choice(COLLABORATION_QUOTES)
@@ -789,7 +797,7 @@ def update_task_assignments():
     if not participation or participation.role not in ['Owner', 'Admin']:
          return jsonify({'success': False, 'message': 'Permission denied'}), 403
 
-    assigner = User.query.get(session['user_id'])
+    assigner = db.session.get(User, session['user_id'])
 
     try:
         current_assignments = Assigned.query.filter_by(task_id=task_id).all()
@@ -829,7 +837,7 @@ def update_task_assignments():
             # Create notifications for unassigned users
             for user_id in users_to_unassign:
                 # Check if user still exists (optional, but good practice)
-                unassigned_user = User.query.get(user_id)
+                unassigned_user = db.session.get(User, user_id)
                 if unassigned_user:
                     notification_content = f"{assigner.name} vous a désassigné de la tâche '{task.title}' dans le projet '{project.name}'."
                     
@@ -879,7 +887,7 @@ def add_member():
         else:
             # Get project and sender information
             project = Project.query.get(data['project_id'])
-            sender = User.query.get(session['user_id'])
+            sender = db.session.get(User, session['user_id'])
             
             # Map English role to French for notification message
             role_en = data['role']
@@ -943,7 +951,7 @@ def notifications():
     
     # For each notification, get sender and project information
     for notification in notifications:
-        notification.sender = User.query.get(notification.sender_id)
+        notification.sender = db.session.get(User, notification.sender_id)
         if notification.project_id:
             notification.project = Project.query.get(notification.project_id)
     
@@ -1369,7 +1377,7 @@ def remove_member():
     try:
         # Get project and remover details for notification
         project = Project.query.get(project_id)
-        remover = User.query.get(session['user_id'])
+        remover = db.session.get(User, session['user_id'])
 
         # Remove user's assignments in this project
         tasks = Task.query.filter_by(project_id=project_id).all()
@@ -1450,7 +1458,7 @@ def parametre():
         return redirect(url_for('connexion'))
     
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     success_message = None
     error_message = None
     email_change_pending = False
@@ -1574,7 +1582,7 @@ def confirm_email_change(token):
     # validate token & expiry
     if data.get('token') != token or data.get('expiry', 0) < datetime.now().timestamp():
         return redirect(url_for('parametre'))
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if user:
         user.email = data['new_email']
         db.session.commit()
@@ -1804,7 +1812,7 @@ def api_get_messages(project_id):
     messages = Message.query.filter_by(project_id=project_id).order_by(Message.timestamp.asc()).all()
     result = []
     for msg in messages:
-        sender = User.query.get(msg.sender_id)
+        sender = db.session.get(User, msg.sender_id)
         result.append({
             'message_id': msg.message_id,
             'sender_id': msg.sender_id,
@@ -1838,7 +1846,7 @@ def api_send_message():
     )
     db.session.add(msg)
     db.session.commit()
-    sender = User.query.get(session['user_id'])
+    sender = db.session.get(User, session['user_id'])
     return jsonify({
         'success': True,
         'message': {
