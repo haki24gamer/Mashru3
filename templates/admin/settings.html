@@ -10,93 +10,68 @@
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Paramètres de l'application</h5>
+                    <h5 class="mb-0">Paramètres de notification</h5>
                 </div>
                 <div class="card-body">
-                    <form id="appSettingsForm">
+                    <form id="notificationSettingsForm" action="{{ url_for('update_email_config') }}" method="POST">
                         <div class="mb-3">
-                            <label for="appName" class="form-label">Nom de l'application</label>
-                            <input type="text" class="form-control" id="appName" value="Mashru3">
+                            <label for="emailFrom" class="form-label">Email d'envoi</label>
+                            <input type="email" class="form-control" id="emailFrom" value="mashru3.djib@gmail.com">
                         </div>
                         <div class="mb-3">
-                            <label for="appDescription" class="form-label">Description</label>
-                            <textarea class="form-control" id="appDescription" rows="3">Plateforme de gestion de projets collaboratifs</textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="maxUploadSize" class="form-label">Taille maximale des fichiers (MB)</label>
-                            <input type="number" class="form-control" id="maxUploadSize" value="5">
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="allowRegistration" checked>
-                            <label class="form-check-label" for="allowRegistration">Permettre les nouvelles inscriptions</label>
+                            <label for="emailPassword" class="form-label">Mot de passe d'application</label>
+                            <input type="password" class="form-control" id="emailPassword" name="emailPassword">
                         </div>
                         <button type="submit" class="btn btn-primary">Enregistrer les paramètres</button>
                     </form>
                 </div>
             </div>
         </div>
-        
         <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Paramètres de notification</h5>
-                </div>
-                <div class="card-body">
-                    <form id="notificationSettingsForm">
-                        <div class="mb-3">
-                            <label for="emailFrom" class="form-label">Email d'envoi</label>
-                            <input type="email" class="form-control" id="emailFrom" value="mashru3.djib@gmail.com">
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="enableProjectNotifications" checked>
-                            <label class="form-check-label" for="enableProjectNotifications">Activer les notifications de projet</label>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="enableTaskNotifications" checked>
-                            <label class="form-check-label" for="enableTaskNotifications">Activer les notifications de tâche</label>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="enableSystemNotifications" checked>
-                            <label class="form-check-label" for="enableSystemNotifications">Activer les notifications système</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Enregistrer les paramètres</button>
-                    </form>
-                </div>
-            </div>
-            
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Maintenance du système</h5>
+                    <h5 class="mb-0">Maintenance de la base des donnees</h5>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button class="btn btn-warning" id="clearCacheBtn">
-                            <i class="fas fa-broom me-2"></i> Nettoyer le cache
-                        </button>
                         <button class="btn btn-info" id="backupDbBtn">
                             <i class="fas fa-database me-2"></i> Sauvegarder la base de données
                         </button>
-                        <button class="btn btn-danger" id="maintenanceModeBtn">
-                            <i class="fas fa-tools me-2"></i> Mode maintenance
-                        </button>
                     </div>
+                    <form action="{{ url_for('import_database') }}" method="POST" enctype="multipart/form-data" id="importDatabaseForm">
+                        <div class="mb-3">
+                            <label for="database_file" class="form-label">Sélectionner un fichier .db</label>
+                            <input class="form-control" type="file" id="database_file" name="database_file" accept=".db">
+                            <div class="form-text">Attention: Cette action remplacera la base de données actuelle. Assurez-vous de faire une sauvegarde d'abord.</div>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-upload me-2"></i> Importer et remplacer
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Display any flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container mt-3">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // App Settings Form
-        document.getElementById('appSettingsForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            // In a real application, this would save to the database
-            alert('Paramètres de l\'application enregistrés!');
-        });
-        
         // Notification Settings Form
         document.getElementById('notificationSettingsForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -105,19 +80,16 @@
         });
         
         // Maintenance buttons
-        document.getElementById('clearCacheBtn').addEventListener('click', function() {
-            // In a real application, this would clear the application cache
-            alert('Cache nettoyé avec succès!');
-        });
-        
         document.getElementById('backupDbBtn').addEventListener('click', function() {
-            // In a real application, this would trigger a database backup
-            alert('Sauvegarde de la base de données lancée!');
+            // Redirect to the backup endpoint to download the database
+            window.location.href = "{{ url_for('backup_database') }}";
         });
-        
-        document.getElementById('maintenanceModeBtn').addEventListener('click', function() {
-            // In a real application, this would toggle maintenance mode
-            confirm('Êtes-vous sûr de vouloir activer le mode maintenance? Les utilisateurs ne pourront pas accéder à l\'application.');
+
+        // Add confirmation for database import
+        document.getElementById('importDatabaseForm').addEventListener('submit', function(e) {
+            if (!confirm('ATTENTION: Cette action va remplacer la base de données actuelle. Toutes les données seront écrasées. Continuer?')) {
+                e.preventDefault();
+            }
         });
     });
 </script>
