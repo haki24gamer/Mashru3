@@ -83,14 +83,20 @@
                                                 </div>
                                             {% endif %}
                                             
-                                            {% if not notification.is_read %}
-                                                <div class="mt-2">
-                                                    <button class="btn btn-sm btn-outline-primary mark-read" 
+                                            <div class="mt-2 d-flex">
+                                                {% if not notification.is_read %}
+                                                    <button class="btn btn-sm btn-outline-primary mark-read me-2" 
                                                             data-notification-id="{{ notification.notification_id }}">
                                                         <i class="fas fa-check me-1"></i>Marquer comme lu
                                                     </button>
-                                                </div>
-                                            {% endif %}
+                                                {% endif %}
+                                                
+                                                {% if notification.project_id %}
+                                                    <a href="/project/{{ notification.project_id }}" class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-folder-open me-1"></i>Aller au projet
+                                                    </a>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

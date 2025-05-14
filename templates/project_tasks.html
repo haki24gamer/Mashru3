@@ -240,12 +240,20 @@
             // Get task ID from the task element
             const taskDataId = taskElement.getAttribute('data-task-id');
             
+            console.log(`Updating task ${taskDataId} to status ${newStatus}`);
+            
             // Send AJAX request to update task status
             updateTaskStatus(taskDataId, newStatus);
         }
     }
 
     function updateTaskStatus(taskId, newStatus) {
+        // Add visual indicator that update is in progress
+        const taskElement = document.getElementById(`task-${taskId}`);
+        if (taskElement) {
+            taskElement.style.opacity = "0.6"; // Dim the card to indicate processing
+        }
+
         fetch('/update_task_status', {
             method: 'POST',
             headers: {
@@ -256,17 +264,32 @@
                 status: newStatus
             }),
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                console.log('Task status updated successfully');
+                console.log(`Task ${taskId} status updated successfully to ${newStatus}`);
+                
+                // Reset opacity
+                if (taskElement) {
+                    taskElement.style.opacity = "1";
+                }
             } else {
-                console.error('Failed to update task status');
-                // Optionally refresh the page to restore the original state
+                console.error(`Failed to update task status: ${data.message}`);
+                alert(`Erreur lors de la mise à jour du statut: ${data.message}`);
+                // Restore UI to original state or reload the page
+                location.reload(); 
             }
         })
         .catch(error => {
             console.error('Error updating task status:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut de la tâche.');
+            // Restore UI to original state or reload the page
+            location.reload();
         });
     }
 
