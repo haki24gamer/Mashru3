@@ -1495,9 +1495,9 @@ def confirm_email_change(token):
     session.pop('email_change', None)
     return redirect(url_for('parametre', email_confirmed=1))
 
-@app.route('/deconnexion', methods=['POST'])
+@app.route('/deconnexion', methods=['GET', 'POST'])
 def deconnexion():
-    # Clear the user's session
+    # ...existing code...
     session.pop('user_id', None)
     return redirect(url_for('connexion'))
 
