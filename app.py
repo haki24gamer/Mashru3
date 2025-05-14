@@ -1258,7 +1258,7 @@ def project_detail(project_id):
     ).first()
     
     user_role = user_participation.role if user_participation else None
-    is_admin = user_role in ['Owner', 'Admin'] if user_role else False
+    is_project_admin = user_role in ['Owner', 'Admin'] if user_role else False
     
     # Get tasks for this project
     tasks = Task.query.filter_by(project_id=project_id).all()
@@ -1297,7 +1297,7 @@ def project_detail(project_id):
         participants=participants, 
         tasks=tasks, 
         user_role=user_role,
-        is_admin=is_admin,
+        is_project_admin=is_project_admin,
         pending_invitations=pending_invites_data
     )
 

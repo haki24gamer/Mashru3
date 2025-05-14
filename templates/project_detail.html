@@ -35,7 +35,7 @@
                 {% endif %}
             </a>
         </li>
-        {% if is_admin %}
+        {% if is_project_admin %}
         <li class="nav-item {% if request.args.get('tab') == 'admin' %}active{% endif %}" style="margin-right: 10px;">
             <a class="nav-link {% if request.args.get('tab') == 'admin' %}active{% endif %}" id="admin-tab" href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" role="tab" aria-controls="admin" aria-selected="false" style="padding: 10px 15px; color: {% if request.args.get('tab') == 'admin' %}#007bff{% else %}#6c757d{% endif %}; font-weight: {% if request.args.get('tab') == 'admin' %}500{% else %}400{% endif %}; border-radius: 4px 4px 0 0; text-decoration: none; position: relative; transition: color 0.2s ease-in-out;">Admin
                 {% if request.args.get('tab') == 'admin' %}
