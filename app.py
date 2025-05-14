@@ -492,6 +492,252 @@ def import_database():
         flash(f'Erreur lors de l\'importation de la base de données: {str(e)}', 'error')
         return redirect(url_for('admin_settings'))
 
+@app.route('/update_project/<int:project_id>', methods=['POST'])
+def update_project(project_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Get project
+    project = db.session.get(Project, project_id)
+    if not project:
+        return jsonify({'success': False, 'message': 'Project not found'}), 404
+    
+    # Check if user has permission
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    
+    if not participation or participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'You do not have permission to update this project'}), 403
+    
+    try:
+        # Update basic project info
+        project.name = request.form.get('name', project.name)
+        project.description = request.form.get('description', project.description)
+        
+        # Update dates
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        
+        if start_date_str:
+            project.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        if end_date_str:
+            project.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        
+        # Handle image upload
+        new_image_path = None
+        if 'project_image' in request.files:
+            file = request.files['project_image']
+            if file and file.filename:
+                if allowed_file(file.filename):
+                    # Create a secure filename with timestamp
+                    timestamp = int(time.time())
+                    filename = secure_filename(f"project_{timestamp}_{file.filename}")
+                    filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
+                    file.save(filepath)
+                    
+                    # Store the relative path
+                    new_image_path = f"/static/uploads/project_images/{filename}"
+                    
+                    # Remove old image if it exists
+                    if project.image:
+                        try:
+                            old_image_path = os.path.join(app.root_path, project.image.lstrip('/'))
+                            if os.path.exists(old_image_path):
+                                os.remove(old_image_path)
+                        except Exception as e:
+                            print(f"Error removing old image: {str(e)}")
+                    
+                    # Update project with new image
+                    project.image = new_image_path
+        
+        db.session.commit()
+        
+        response_data = {
+            'success': True,
+            'message': 'Project updated successfully'
+        }
+        
+        if new_image_path:
+            response_data['image_path'] = new_image_path
+            
+        return jsonify(response_data)
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/update_member_role', methods=['POST'])
+def update_member_role():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    project_id = data.get('project_id')
+    target_user_id = data.get('user_id')
+    new_role = data.get('role')
+    
+    # Check if the current user is project Owner or Admin
+    current_user_participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    
+    if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'You do not have permission to update roles'}), 403
+    
+    # If current user is Admin, they can't change Owner's role
+    if current_user_participation.role == 'Admin':
+        target_participation = Participate.query.filter_by(
+            user_id=target_user_id,
+            project_id=project_id
+        ).first()
+        
+        if target_participation and target_participation.role == 'Owner':
+            return jsonify({'success': False, 'message': 'You cannot change the Owner\'s role'}), 403
+    
+    try:
+        participation = Participate.query.filter_by(
+            user_id=target_user_id,
+            project_id=project_id
+        ).first()
+        
+        if participation:
+            participation.role = new_role
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Role updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'User is not a member of this project'}), 404
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/remove_member', methods=['POST'])
+def remove_member():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    project_id = data.get('project_id')
+    target_user_id = data.get('user_id')
+    
+    # Check if the current user is project Owner or Admin
+    current_user_participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    
+    if not current_user_participation or current_user_participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'You do not have permission to remove members'}), 403
+    
+    # If current user is Admin, they can't remove Owner
+    if current_user_participation.role == 'Admin':
+        target_participation = Participate.query.filter_by(
+            user_id=target_user_id,
+            project_id=project_id
+        ).first()
+        
+        if target_participation and target_participation.role == 'Owner':
+            return jsonify({'success': False, 'message': 'You cannot remove the Owner of the project'}), 403
+    
+    # Check if user is trying to remove themselves
+    if int(target_user_id) == session['user_id']:
+        return jsonify({'success': False, 'message': 'You cannot remove yourself from the project'}), 400
+    
+    try:
+        participation = Participate.query.filter_by(
+            user_id=target_user_id,
+            project_id=project_id
+        ).first()
+        
+        if participation:
+            # Remove user from project
+            db.session.delete(participation)
+            
+            # Also remove user from all tasks in this project
+            task_ids = db.session.query(Task.task_id).filter_by(project_id=project_id).all()
+            task_ids = [tid[0] for tid in task_ids]
+            
+            if task_ids:
+                Assigned.query.filter(
+                    Assigned.user_id == target_user_id,
+                    Assigned.task_id.in_(task_ids)
+                ).delete(synchronize_session=False)
+            
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Member removed successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'User is not a member of this project'}), 404
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/delete_project/<int:project_id>', methods=['POST'])
+def delete_project(project_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Check if user has permission (only Owner can delete)
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    
+    if not participation or participation.role != 'Owner':
+        return jsonify({'success': False, 'message': 'Only the project Owner can delete the project'}), 403
+    
+    try:
+        project = db.session.get(Project, project_id)
+        
+        if not project:
+            return jsonify({'success': False, 'message': 'Project not found'}), 404
+        
+        # Delete all related records
+        
+        # 1. Remove tasks assignments
+        task_ids = db.session.query(Task.task_id).filter_by(project_id=project_id).all()
+        task_ids = [tid[0] for tid in task_ids]
+        
+        if task_ids:
+            Assigned.query.filter(Assigned.task_id.in_(task_ids)).delete(synchronize_session=False)
+        
+        # 2. Remove tasks
+        Task.query.filter_by(project_id=project_id).delete()
+        
+        # 3. Remove participation records
+        Participate.query.filter_by(project_id=project_id).delete()
+        
+        # 4. Remove notifications related to this project
+        Notification.query.filter_by(project_id=project_id).delete()
+        
+        # 5. Remove specifications
+        Specification.query.filter_by(project_id=project_id).delete()
+        
+        # 6. Remove messages
+        Message.query.filter_by(project_id=project_id).delete()
+        
+        # 7. Delete the project image if it exists
+        if project.image:
+            try:
+                image_path = os.path.join(app.root_path, project.image.lstrip('/'))
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+            except Exception as e:
+                print(f"Error removing project image: {str(e)}")
+        
+        # 8. Finally, delete the project
+        db.session.delete(project)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Project deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/add_project', methods=['POST'])
 def add_project():
     if 'user_id' not in session:
@@ -1037,7 +1283,6 @@ def update_task_status():
             except Exception as notification_error:
                 print(f"Error creating notification for user {assigned_user.user_id}: {str(notification_error)}")
                 # Continue with other notifications even if one fails
-                continue
         
         db.session.commit()
         print(f"Task status updated successfully. Created {notification_count} notifications")
