@@ -826,9 +826,63 @@ def add_task():
         end_date=end_date     # Use converted date object or None
     )
     db.session.add(new_task)
-    db.session.commit()
+    db.session.commit() # Commit to get task_id
 
-    return {'message': 'Task created successfully'}, 200
+    # Handle task assignments and notifications
+    assignee_ids = data.get('assignee_ids', [])
+    if assignee_ids:
+        project = db.session.get(Project, new_task.project_id)
+        assigner = db.session.get(User, session['user_id'])
+
+        for user_id_str in assignee_ids:
+            try:
+                user_id = int(user_id_str)
+                # Check if the user is a member of the project
+                is_member = Participate.query.filter_by(
+                    user_id=user_id,
+                    project_id=new_task.project_id
+                ).first()
+                
+                if is_member:
+                    # Check if already assigned (should not happen for new task but good practice)
+                    existing_assignment = Assigned.query.filter_by(user_id=user_id, task_id=new_task.task_id).first()
+                    if not existing_assignment:
+                        assignment = Assigned(
+                            user_id=user_id,
+                            task_id=new_task.task_id
+                        )
+                        db.session.add(assignment)
+
+                        # Create notification for the newly assigned user
+                        if assigner and project: # Ensure assigner and project details are available
+                            notification_content = f"{assigner.name} vous a assigné à la nouvelle tâche '{new_task.title}' dans le projet '{project.name}'."
+                            
+                            new_notification = Notification(
+                                recipient_id=user_id,
+                                sender_id=session['user_id'],
+                                project_id=new_task.project_id,
+                                notification_type='task_assignment',
+                                content=notification_content,
+                                is_read=False
+                            )
+                            db.session.add(new_notification)
+            except ValueError:
+                print(f"Invalid user_id format: {user_id_str}")
+                continue # Skip if user_id is not a valid integer
+            except Exception as e:
+                db.session.rollback() # Rollback on error during assignment/notification
+                print(f"Error assigning user {user_id_str} or sending notification: {str(e)}")
+                # Optionally, you could return an error response here or collect errors
+                # For now, we'll log and continue, then commit successful ones.
+        
+        try:
+            db.session.commit() # Commit all assignments and notifications
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error committing assignments/notifications: {str(e)}")
+            return jsonify({'success': False, 'message': 'Erreur lors de l\'assignation des utilisateurs ou de l\'envoi des notifications.'}), 500
+
+    return jsonify({'success': True, 'message': 'Task created successfully', 'task_id': new_task.task_id}), 200
 
 @app.route('/get_task_assignees/<int:task_id>')
 def get_task_assignees(task_id):

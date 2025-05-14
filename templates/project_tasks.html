@@ -328,6 +328,98 @@
             alert('Une erreur s\'est produite lors de la suppression de la tâche.');
         });
     }
+
+    // Function to handle individual user assignments
+    async function toggleUserAssignment(taskId, userId, isAssigning) {
+        let userIdsToSend = [];
+        const currentUserIdInt = parseInt(userId);
+
+        try {
+            // Always fetch current assignees first to build the correct list
+            const assigneesResponse = await fetch(`/get_task_assignees/${taskId}`);
+            const assigneesData = await assigneesResponse.json();
+
+            if (!assigneesData.success) {
+                console.error('Failed to get current assignees:', assigneesData.message);
+                alert('Erreur: Impossible de récupérer les assignations actuelles.');
+                return false;
+            }
+
+            let currentAssigneeIds = new Set(assigneesData.assignee_ids.map(id => parseInt(id)));
+
+            if (isAssigning) {
+                // Add the new user to the set of current assignees
+                currentAssigneeIds.add(currentUserIdInt);
+            } else {
+                // Remove the user from the set of current assignees
+                currentAssigneeIds.delete(currentUserIdInt);
+            }
+            userIdsToSend = Array.from(currentAssigneeIds);
+
+        } catch (error) {
+            console.error('Error fetching current assignees or preparing list:', error);
+            alert('Erreur lors de la préparation de la liste des assignations.');
+            return false;
+        }
+        
+        try {
+            const response = await fetch('/update_task_assignments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_ids: userIdsToSend, // Send the consolidated list
+                    task_id: taskId
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to update assignments:', data.message);
+                alert('Erreur: ' + (data.message || 'Impossible de mettre à jour les assignations.'));
+            }
+            return data.success;
+        } catch (error) {
+            console.error('Error updating assignment:', error);
+            alert('Erreur lors de la mise à jour de l\'assignation.');
+            return false;
+        }
+    }
+
+    // Function to update the task card to reflect new assignees
+    async function updateTaskUsersDisplay(taskId) {
+        const taskElement = document.getElementById(`task-${taskId}`);
+        if (!taskElement) return;
+        
+        fetch(`/get_task_assignees/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Find all users that match the assignee IDs
+                    const assignedUsers = projectParticipants.filter(
+                        participant => data.assignee_ids.includes(participant.user_id)
+                    );
+                    
+                    // Update the UI element showing assigned users
+                    const usersContainer = taskElement.querySelector('.task-users');
+                    if (usersContainer) {
+                        usersContainer.innerHTML = '';
+                        
+                        assignedUsers.forEach(user => {
+                            const initial = document.createElement('span');
+                            initial.className = 'user-initials';
+                            initial.title = user.name;
+                            initial.textContent = user.name.charAt(0);
+                            usersContainer.appendChild(initial);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating task users display:', error);
+            });
+    }
 </script>
 
 <!-- New Task Modal -->
@@ -356,6 +448,12 @@
                             <option>low</option>
                             <option>medium</option>
                             <option>high</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskAssignees">Assigner à</label>
+                        <select multiple class="form-control" id="taskAssignees">
+                            <!-- Options will be populated by JavaScript -->
                         </select>
                     </div>
                     <div class="form-group">
@@ -545,83 +643,6 @@ document.getElementById('participant-list').addEventListener('click', function(e
     }
 });
 
-// Function to handle individual user assignments
-async function toggleUserAssignment(taskId, userId, isAssigning) {
-    const userIds = isAssigning ? [userId] : [];
-    
-    if (!isAssigning) {
-        // For unassignment, we need to get current assignees and remove this user
-        try {
-            const response = await fetch(`/get_task_assignees/${taskId}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                // Filter out the user being unassigned
-                userIds.push(...data.assignee_ids.filter(id => id !== parseInt(userId)));
-            } else {
-                console.error('Failed to get current assignees:', data.message);
-                return false;
-            }
-        } catch (error) {
-            console.error('Error fetching current assignees:', error);
-            return false;
-        }
-    }
-    
-    try {
-        const response = await fetch('/update_task_assignments', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                user_ids: userIds,
-                task_id: taskId
-            })
-        });
-        
-        const data = await response.json();
-        return data.success;
-    } catch (error) {
-        console.error('Error updating assignment:', error);
-        return false;
-    }
-}
-
-// Function to update the task card to reflect new assignees
-function updateTaskUsersDisplay(taskId) {
-    const taskElement = document.getElementById(`task-${taskId}`);
-    if (!taskElement) return;
-    
-    fetch(`/get_task_assignees/${taskId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Find all users that match the assignee IDs
-                const assignedUsers = projectParticipants.filter(
-                    participant => data.assignee_ids.includes(participant.user_id)
-                );
-                
-                // Update the UI element showing assigned users
-                const usersContainer = taskElement.querySelector('.task-users');
-                if (usersContainer) {
-                    usersContainer.innerHTML = '';
-                    
-                    assignedUsers.forEach(user => {
-                        const initial = document.createElement('span');
-                        initial.className = 'user-initials';
-                        initial.title = user.name;
-                        initial.textContent = user.name.charAt(0);
-                        usersContainer.appendChild(initial);
-                    });
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error updating task users display:', error);
-        });
-}
-
 $(document).ready(function(){
     $('[data-toggle="popover"]').popover({
         html: true,
@@ -635,6 +656,8 @@ function createTask() {
     const priority = document.getElementById('taskPriority').value;
     const startDate = document.getElementById('taskStartDate').value;
     const endDate = document.getElementById('taskEndDate').value;
+    const assigneesSelect = document.getElementById('taskAssignees');
+    const assignee_ids = [...assigneesSelect.selectedOptions].map(option => option.value);
 
     fetch('/add_task', {
         method: 'POST',
@@ -645,6 +668,7 @@ function createTask() {
             title: title,
             description: description,
             priority: priority,
+            assignee_ids: assignee_ids,
             start_date: startDate,
             end_date: endDate,
             status: taskStatus,
@@ -653,11 +677,11 @@ function createTask() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message === 'Task created successfully') {
+        if (data.success) {
             $('#newTaskModal').modal('hide');
-            location.reload();
+            location.reload(); // Reload to see the new task with assignees
         } else {
-            alert('Failed to create task');
+            alert('Failed to create task: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
@@ -665,6 +689,27 @@ function createTask() {
         alert('Failed to create task');
     });
 }
+
+// Populate assignees when New Task Modal is shown
+$('#newTaskModal').on('show.bs.modal', function () {
+    const assigneesSelect = document.getElementById('taskAssignees');
+    assigneesSelect.innerHTML = ''; // Clear existing options
+
+    if (projectParticipants && projectParticipants.length > 0) {
+        projectParticipants.forEach(participant => {
+            const option = document.createElement('option');
+            option.value = participant.user_id;
+            option.textContent = `${participant.name} (${participant.email})`;
+            assigneesSelect.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'Aucun participant à assigner';
+        assigneesSelect.appendChild(option);
+    }
+    // If you are using a library like Select2 or Choices.js, you might need to re-initialize it here.
+});
 
 function editTask(taskId) {
     event.stopPropagation();
