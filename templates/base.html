@@ -547,6 +547,15 @@
                         <i class="material-icons-outlined">settings</i> Parametre
                     </a>
                 </li>
+                <!-- Admin link - only visible to admins -->
+                {% if is_admin == True %}
+                <li class="nav-item">
+                    <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint.startswith('admin_') %}active{% endif %}">
+                        <i class="fas fa-user-shield me-2"></i>
+                        Administration
+                    </a>
+                </li>
+                {% endif %}
             </ul>
             
             <!-- Logout Button -->

@@ -1,9 +1,11 @@
 <div class="tab-pane fade show active" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Tâches du projet</h3>
+        {% if is_project_admin %}
         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
             <i class="material-icons-outlined">add</i> Nouvelle tâche
         </button>
+        {% endif %}
     </div>
     <div class="kanban-container mt-4">
         <div class="row">
@@ -13,7 +15,17 @@
                     <div class="kanban-items" id="todo-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="TODO">
                         {% for task in tasks %}
                             {% if task.status == 'TODO' %}
-                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                            {% set is_assigned = false %}
+                            {% for user in task.assigned_users %}
+                                {% if user.user_id == current_user_id %}
+                                    {% set is_assigned = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="kanban-item" 
+                                 draggable="{% if is_project_admin or is_assigned %}true{% else %}false{% endif %}" 
+                                 ondragstart="drag(event)" 
+                                 id="task-{{ task.task_id }}" 
+                                 data-task-id="{{ task.task_id }}">
                                 <div class="card mb-2">
                                     <div class="card-body">
                                         <h6 class="card-title">{{ task.title }}</h6>
@@ -27,15 +39,19 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
+                                            {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
+                                            {% endif %}
+                                            {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -51,7 +67,17 @@
                     <div class="kanban-items" id="in-progress-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="IN_PROGRESS">
                         {% for task in tasks %}
                             {% if task.status == 'IN_PROGRESS' %}
-                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                            {% set is_assigned = false %}
+                            {% for user in task.assigned_users %}
+                                {% if user.user_id == current_user_id %}
+                                    {% set is_assigned = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="kanban-item" 
+                                 draggable="{% if is_project_admin or is_assigned %}true{% else %}false{% endif %}" 
+                                 ondragstart="drag(event)" 
+                                 id="task-{{ task.task_id }}" 
+                                 data-task-id="{{ task.task_id }}">
                                 <div class="card mb-2">
                                     <div class="card-body">
                                         <h6 class="card-title">{{ task.title }}</h6>
@@ -65,15 +91,19 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
+                                            {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
+                                            {% endif %}
+                                            {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -89,7 +119,17 @@
                     <div class="kanban-items" id="review-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="REVIEW">
                         {% for task in tasks %}
                             {% if task.status == 'REVIEW' %}
-                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                            {% set is_assigned = false %}
+                            {% for user in task.assigned_users %}
+                                {% if user.user_id == current_user_id %}
+                                    {% set is_assigned = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="kanban-item" 
+                                 draggable="{% if is_project_admin or is_assigned %}true{% else %}false{% endif %}" 
+                                 ondragstart="drag(event)" 
+                                 id="task-{{ task.task_id }}" 
+                                 data-task-id="{{ task.task_id }}">
                                 <div class="card mb-2">
                                     <div class="card-body">
                                         <h6 class="card-title">{{ task.title }}</h6>
@@ -103,15 +143,19 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
+                                            {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
+                                            {% endif %}
+                                            {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -127,7 +171,17 @@
                     <div class="kanban-items" id="done-tasks" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="DONE">
                         {% for task in tasks %}
                             {% if task.status == 'DONE' %}
-                            <div class="kanban-item" draggable="true" ondragstart="drag(event)" id="task-{{ task.task_id }}" data-task-id="{{ task.task_id }}">
+                            {% set is_assigned = false %}
+                            {% for user in task.assigned_users %}
+                                {% if user.user_id == current_user_id %}
+                                    {% set is_assigned = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="kanban-item" 
+                                 draggable="{% if is_project_admin or is_assigned %}true{% else %}false{% endif %}" 
+                                 ondragstart="drag(event)" 
+                                 id="task-{{ task.task_id }}" 
+                                 data-task-id="{{ task.task_id }}">
                                 <div class="card mb-2">
                                     <div class="card-body">
                                         <h6 class="card-title">{{ task.title }}</h6>
@@ -141,15 +195,19 @@
                                             </div>
                                         </div>
                                         <div class="task-actions mt-2 text-right">
+                                            {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
                                             </button>
+                                            {% endif %}
+                                            {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
                                                 <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
                                             </button>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -219,11 +277,21 @@
 
 <script>
     function allowDrop(ev) {
-        ev.preventDefault();
+        // Check if the item being dragged is draggable based on permissions
+        const draggedItemId = ev.dataTransfer.getData("text");
+        const draggedElement = document.getElementById(draggedItemId);
+        if (draggedElement && draggedElement.getAttribute('draggable') === 'true') {
+            ev.preventDefault();
+        }
     }
 
     function drag(ev) {
-        ev.dataTransfer.setData("text", ev.target.id);
+        // Only allow drag if the element is draggable
+        if (ev.target.getAttribute('draggable') === 'true') {
+            ev.dataTransfer.setData("text", ev.target.id);
+        } else {
+            ev.preventDefault(); // Prevent dragging if not allowed
+        }
     }
 
     function drop(ev) {
@@ -240,12 +308,20 @@
             // Get task ID from the task element
             const taskDataId = taskElement.getAttribute('data-task-id');
             
+            console.log(`Updating task ${taskDataId} to status ${newStatus}`);
+            
             // Send AJAX request to update task status
             updateTaskStatus(taskDataId, newStatus);
         }
     }
 
     function updateTaskStatus(taskId, newStatus) {
+        // Add visual indicator that update is in progress
+        const taskElement = document.getElementById(`task-${taskId}`);
+        if (taskElement) {
+            taskElement.style.opacity = "0.6"; // Dim the card to indicate processing
+        }
+
         fetch('/update_task_status', {
             method: 'POST',
             headers: {
@@ -256,17 +332,32 @@
                 status: newStatus
             }),
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                console.log('Task status updated successfully');
+                console.log(`Task ${taskId} status updated successfully to ${newStatus}`);
+                
+                // Reset opacity
+                if (taskElement) {
+                    taskElement.style.opacity = "1";
+                }
             } else {
-                console.error('Failed to update task status');
-                // Optionally refresh the page to restore the original state
+                console.error(`Failed to update task status: ${data.message}`);
+                alert(`Erreur lors de la mise à jour du statut: ${data.message}`);
+                // Restore UI to original state or reload the page
+                location.reload(); 
             }
         })
         .catch(error => {
             console.error('Error updating task status:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut de la tâche.');
+            // Restore UI to original state or reload the page
+            location.reload();
         });
     }
 
@@ -305,6 +396,98 @@
             alert('Une erreur s\'est produite lors de la suppression de la tâche.');
         });
     }
+
+    // Function to handle individual user assignments
+    async function toggleUserAssignment(taskId, userId, isAssigning) {
+        let userIdsToSend = [];
+        const currentUserIdInt = parseInt(userId);
+
+        try {
+            // Always fetch current assignees first to build the correct list
+            const assigneesResponse = await fetch(`/get_task_assignees/${taskId}`);
+            const assigneesData = await assigneesResponse.json();
+
+            if (!assigneesData.success) {
+                console.error('Failed to get current assignees:', assigneesData.message);
+                alert('Erreur: Impossible de récupérer les assignations actuelles.');
+                return false;
+            }
+
+            let currentAssigneeIds = new Set(assigneesData.assignee_ids.map(id => parseInt(id)));
+
+            if (isAssigning) {
+                // Add the new user to the set of current assignees
+                currentAssigneeIds.add(currentUserIdInt);
+            } else {
+                // Remove the user from the set of current assignees
+                currentAssigneeIds.delete(currentUserIdInt);
+            }
+            userIdsToSend = Array.from(currentAssigneeIds);
+
+        } catch (error) {
+            console.error('Error fetching current assignees or preparing list:', error);
+            alert('Erreur lors de la préparation de la liste des assignations.');
+            return false;
+        }
+        
+        try {
+            const response = await fetch('/update_task_assignments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_ids: userIdsToSend, // Send the consolidated list
+                    task_id: taskId
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to update assignments:', data.message);
+                alert('Erreur: ' + (data.message || 'Impossible de mettre à jour les assignations.'));
+            }
+            return data.success;
+        } catch (error) {
+            console.error('Error updating assignment:', error);
+            alert('Erreur lors de la mise à jour de l\'assignation.');
+            return false;
+        }
+    }
+
+    // Function to update the task card to reflect new assignees
+    async function updateTaskUsersDisplay(taskId) {
+        const taskElement = document.getElementById(`task-${taskId}`);
+        if (!taskElement) return;
+        
+        fetch(`/get_task_assignees/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Find all users that match the assignee IDs
+                    const assignedUsers = projectParticipants.filter(
+                        participant => data.assignee_ids.includes(participant.user_id)
+                    );
+                    
+                    // Update the UI element showing assigned users
+                    const usersContainer = taskElement.querySelector('.task-users');
+                    if (usersContainer) {
+                        usersContainer.innerHTML = '';
+                        
+                        assignedUsers.forEach(user => {
+                            const initial = document.createElement('span');
+                            initial.className = 'user-initials';
+                            initial.title = user.name;
+                            initial.textContent = user.name.charAt(0);
+                            usersContainer.appendChild(initial);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating task users display:', error);
+            });
+    }
 </script>
 
 <!-- New Task Modal -->
@@ -333,6 +516,12 @@
                             <option>low</option>
                             <option>medium</option>
                             <option>high</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskAssignees">Assigner à</label>
+                        <select multiple class="form-control" id="taskAssignees">
+                            <!-- Options will be populated by JavaScript -->
                         </select>
                     </div>
                     <div class="form-group">
@@ -370,8 +559,7 @@
                 <input type="hidden" id="assign_task_id" name="task_id">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" onclick="submitAssignUserForm()">Mettre à jour les assignations</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
@@ -484,18 +672,42 @@ document.getElementById('participant-list').addEventListener('click', function(e
     if (event.target.classList.contains('toggle-assign-btn')) {
         const button = event.target;
         const currentAction = button.getAttribute('data-action');
+        const userId = button.getAttribute('data-user-id');
+        const taskId = document.getElementById('assign_task_id').value;
 
-        if (currentAction === 'assign') {
-            button.setAttribute('data-action', 'unassign');
-            button.classList.remove('btn-success');
-            button.classList.add('btn-outline-danger');
-            button.textContent = 'Désassigner';
-        } else {
-            button.setAttribute('data-action', 'assign');
-            button.classList.remove('btn-outline-danger');
-            button.classList.add('btn-success');
-            button.textContent = 'Assigner';
-        }
+        // Show loading state
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        
+        // Call function to update assignment
+        toggleUserAssignment(taskId, userId, currentAction === 'assign')
+            .then(success => {
+                if (success) {
+                    // Toggle button state
+                    if (currentAction === 'assign') {
+                        button.setAttribute('data-action', 'unassign');
+                        button.classList.remove('btn-success');
+                        button.classList.add('btn-outline-danger');
+                        button.textContent = 'Désassigner';
+                    } else {
+                        button.setAttribute('data-action', 'assign');
+                        button.classList.remove('btn-outline-danger');
+                        button.classList.add('btn-success');
+                        button.textContent = 'Assigner';
+                    }
+                    
+                    // Update the UI to reflect the change
+                    updateTaskUsersDisplay(taskId);
+                } else {
+                    // Restore original button state on error
+                    button.textContent = originalText;
+                    alert('Échec de la mise à jour de l\'assignation');
+                }
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
     }
 });
 
@@ -506,44 +718,14 @@ $(document).ready(function(){
     });
 });
 
-function submitAssignUserForm() {
-    const participantListDiv = document.getElementById('participant-list');
-    const assignedButtons = participantListDiv.querySelectorAll('button[data-action="unassign"]'); 
-    const selectedUserIds = Array.from(assignedButtons).map(button => button.getAttribute('data-user-id'));
-    
-    const data = {
-        user_ids: selectedUserIds,
-        task_id: document.getElementById('assign_task_id').value
-    };
-
-    fetch('/update_task_assignments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            $('#assignUserModal').modal('hide');
-            location.reload();
-        } else {
-            alert('Failed to update assignments: ' + data.message);
-        }
-    })
-    .catch(error => {
-         console.error('Error updating assignments:', error);
-         alert('An error occurred while updating assignments.');
-    });
-}
-
 function createTask() {
     const title = document.getElementById('taskTitle').value;
     const description = document.getElementById('taskDescription').value;
     const priority = document.getElementById('taskPriority').value;
     const startDate = document.getElementById('taskStartDate').value;
     const endDate = document.getElementById('taskEndDate').value;
+    const assigneesSelect = document.getElementById('taskAssignees');
+    const assignee_ids = [...assigneesSelect.selectedOptions].map(option => option.value);
 
     fetch('/add_task', {
         method: 'POST',
@@ -554,6 +736,7 @@ function createTask() {
             title: title,
             description: description,
             priority: priority,
+            assignee_ids: assignee_ids,
             start_date: startDate,
             end_date: endDate,
             status: taskStatus,
@@ -562,11 +745,11 @@ function createTask() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message === 'Task created successfully') {
+        if (data.success) {
             $('#newTaskModal').modal('hide');
-            location.reload();
+            location.reload(); // Reload to see the new task with assignees
         } else {
-            alert('Failed to create task');
+            alert('Failed to create task: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
@@ -574,6 +757,27 @@ function createTask() {
         alert('Failed to create task');
     });
 }
+
+// Populate assignees when New Task Modal is shown
+$('#newTaskModal').on('show.bs.modal', function () {
+    const assigneesSelect = document.getElementById('taskAssignees');
+    assigneesSelect.innerHTML = ''; // Clear existing options
+
+    if (projectParticipants && projectParticipants.length > 0) {
+        projectParticipants.forEach(participant => {
+            const option = document.createElement('option');
+            option.value = participant.user_id;
+            option.textContent = `${participant.name} (${participant.email})`;
+            assigneesSelect.appendChild(option);
+        });
+    } else {
+        const option = document.createElement('option');
+        option.disabled = true;
+        option.textContent = 'Aucun participant à assigner';
+        assigneesSelect.appendChild(option);
+    }
+    // If you are using a library like Select2 or Choices.js, you might need to re-initialize it here.
+});
 
 function editTask(taskId) {
     event.stopPropagation();
