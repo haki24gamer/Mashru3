@@ -492,6 +492,65 @@ def import_database():
         flash(f'Erreur lors de l\'importation de la base de données: {str(e)}', 'error')
         return redirect(url_for('admin_settings'))
 
+@app.route('/add_project', methods=['POST'])
+def add_project():
+    if 'user_id' not in session:
+        return redirect(url_for('connexion'))
+    
+    user_id = session['user_id']
+    name = request.form.get('name')
+    description = request.form.get('description')
+    start_date_str = request.form.get('start_date')
+    end_date_str = request.form.get('end_date')
+    
+    # Convert string dates to date objects if they're provided
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+    
+    # Handle image upload
+    image_path = None
+    if 'image' in request.files:
+        file = request.files['image']
+        if file and file.filename:
+            if allowed_file(file.filename):
+                # Create a secure filename with timestamp to avoid conflicts
+                timestamp = int(time.time())
+                filename = secure_filename(f"project_{timestamp}_{file.filename}")
+                filepath = os.path.join(app.config['PROJECT_IMAGES_FOLDER'], filename)
+                file.save(filepath)
+                # Store the relative path for the database
+                image_path = f"/static/uploads/project_images/{filename}"
+    
+    try:
+        # Create new project
+        new_project = Project(
+            name=name,
+            description=description,
+            image=image_path,
+            start_date=start_date,
+            end_date=end_date
+        )
+        db.session.add(new_project)
+        db.session.flush()  # Get the ID of the new project
+        
+        # Add the current user as the Owner
+        participation = Participate(
+            user_id=user_id,
+            project_id=new_project.project_id,
+            role='Owner'
+        )
+        db.session.add(participation)
+        db.session.commit()
+        
+        flash('Projet créé avec succès!', 'success')
+        return redirect(url_for('project_detail', project_id=new_project.project_id))
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating project: {str(e)}")
+        flash(f'Erreur lors de la création du projet: {str(e)}', 'error')
+        return redirect(url_for('projects'))
+
 @app.route('/connexion', methods=['GET', 'POST'])
 def connexion():
     if request.method == 'POST':
