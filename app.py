@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from datetime import date
 from email.message import EmailMessage
 from flask_mail import Mail, Message as MailMessage
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import random
 import os
 from datetime import datetime, timedelta
@@ -28,6 +29,9 @@ app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 mail = Mail(app)
+
+# Initialize SocketIO
+socketio = SocketIO(app)
 
 # Configure uploads directories
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
@@ -138,6 +142,52 @@ class Message(db.Model):
 # Ensure the database and tables are created
 with app.app_context():
     db.create_all()    # Create tables if they don't exist
+
+# WebSocket event: Join project room
+@socketio.on('join_project')
+def handle_join_project(data):
+    project_id = data.get('project_id')
+    if project_id:
+        join_room(project_id)
+        emit('user_joined', {'message': f'User joined project {project_id}'}, room=project_id)
+
+# WebSocket event: Leave project room
+@socketio.on('leave_project')
+def handle_leave_project(data):
+    project_id = data.get('project_id')
+    if project_id:
+        leave_room(project_id)
+        emit('user_left', {'message': f'User left project {project_id}'}, room=project_id)
+
+# WebSocket event: Send message
+@socketio.on('send_message')
+def handle_send_message(data):
+    project_id = data.get('project_id')
+    content = data.get('content', '').strip()
+    sender_id = session.get('user_id')
+
+    if not project_id or not content or not sender_id:
+        return
+
+    # Save the message to the database
+    msg = Message(
+        project_id=project_id,
+        sender_id=sender_id,
+        content=content
+    )
+    db.session.add(msg)
+    db.session.commit()
+
+    # Broadcast the message to the project room
+    sender = db.session.get(User, sender_id)
+    emit('new_message', {
+        'project_id': project_id,  # Include project_id
+        'message_id': msg.message_id,
+        'sender_id': sender_id,
+        'sender_name': sender.name if sender else "Vous",
+        'content': msg.content,
+        'timestamp': msg.timestamp.strftime('%H:%M')
+    }, room=project_id)
 
 # Admin routes
 @app.route('/admin')
@@ -2066,4 +2116,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, port=port, host="0.0.0.0")
+    socketio.run(app, debug=True, port=port, host="0.0.0.0")
