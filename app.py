@@ -189,7 +189,98 @@ def handle_send_message(data):
         'timestamp': msg.timestamp.strftime('%H:%M')
     }, room=project_id)
 
-# Admin routes
+@app.route('/get_task_assignees/<int:task_id>')
+def get_task_assignees(task_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Get the task
+    task = db.session.get(Task, task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+    
+    # Check if user has permission to view this task (must be part of the project)
+    user_participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=task.project_id
+    ).first()
+    
+    if not user_participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    # Get all users assigned to this task
+    assigned_users = db.session.query(Assigned.user_id).filter_by(task_id=task_id).all()
+    assignee_ids = [user.user_id for user in assigned_users]
+    
+    return jsonify({
+        'success': True,
+        'assignee_ids': assignee_ids
+    })
+
+@app.route('/update_task_assignments', methods=['POST'])
+def update_task_assignments():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    task_id = data.get('task_id')
+    user_ids = data.get('user_ids', [])
+    
+    # Validate data
+    if not task_id:
+        return jsonify({'success': False, 'message': 'Task ID required'}), 400
+    
+    # Get the task
+    task = db.session.get(Task, task_id)
+    if not task:
+        return jsonify({'success': False, 'message': 'Task not found'}), 404
+    
+    # Check if user has permission to modify this task
+    current_user_id = session['user_id']
+    user_participation = Participate.query.filter_by(
+        user_id=current_user_id,
+        project_id=task.project_id
+    ).first()
+    
+    if not user_participation:
+        return jsonify({'success': False, 'message': 'Access denied to this project'}), 403
+    
+    is_project_admin = user_participation.role in ['Owner', 'Admin']
+    is_assigned_to_task = Assigned.query.filter_by(user_id=current_user_id, task_id=task_id).first()
+    
+    if not is_project_admin and not is_assigned_to_task:
+        return jsonify({'success': False, 'message': 'Permission denied: You must be an admin or assigned to this task to modify assignments'}), 403
+    
+    try:
+        # Remove all current assignments for the task
+        Assigned.query.filter_by(task_id=task_id).delete()
+        
+        # Add new assignments based on the provided list
+        for user_id in user_ids:
+            # Verify this user is part of the project
+            is_project_member = Participate.query.filter_by(
+                user_id=user_id,
+                project_id=task.project_id
+            ).first()
+            
+            if is_project_member:
+                new_assignment = Assigned(
+                    user_id=user_id,
+                    task_id=task_id
+                )
+                db.session.add(new_assignment)
+            else:
+                # Log but continue (skip non-members)
+                print(f"Warning: User {user_id} is not a member of this project")
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Task assignments updated'})
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating task assignments: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/admin')
 def admin_dashboard():
     if 'user_id' not in session:
