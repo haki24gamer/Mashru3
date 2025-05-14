@@ -370,8 +370,7 @@
                 <input type="hidden" id="assign_task_id" name="task_id">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" onclick="submitAssignUserForm()">Mettre à jour les assignations</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
@@ -484,20 +483,121 @@ document.getElementById('participant-list').addEventListener('click', function(e
     if (event.target.classList.contains('toggle-assign-btn')) {
         const button = event.target;
         const currentAction = button.getAttribute('data-action');
+        const userId = button.getAttribute('data-user-id');
+        const taskId = document.getElementById('assign_task_id').value;
 
-        if (currentAction === 'assign') {
-            button.setAttribute('data-action', 'unassign');
-            button.classList.remove('btn-success');
-            button.classList.add('btn-outline-danger');
-            button.textContent = 'Désassigner';
-        } else {
-            button.setAttribute('data-action', 'assign');
-            button.classList.remove('btn-outline-danger');
-            button.classList.add('btn-success');
-            button.textContent = 'Assigner';
-        }
+        // Show loading state
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        
+        // Call function to update assignment
+        toggleUserAssignment(taskId, userId, currentAction === 'assign')
+            .then(success => {
+                if (success) {
+                    // Toggle button state
+                    if (currentAction === 'assign') {
+                        button.setAttribute('data-action', 'unassign');
+                        button.classList.remove('btn-success');
+                        button.classList.add('btn-outline-danger');
+                        button.textContent = 'Désassigner';
+                    } else {
+                        button.setAttribute('data-action', 'assign');
+                        button.classList.remove('btn-outline-danger');
+                        button.classList.add('btn-success');
+                        button.textContent = 'Assigner';
+                    }
+                    
+                    // Update the UI to reflect the change
+                    updateTaskUsersDisplay(taskId);
+                } else {
+                    // Restore original button state on error
+                    button.textContent = originalText;
+                    alert('Échec de la mise à jour de l\'assignation');
+                }
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
     }
 });
+
+// Function to handle individual user assignments
+async function toggleUserAssignment(taskId, userId, isAssigning) {
+    const userIds = isAssigning ? [userId] : [];
+    
+    if (!isAssigning) {
+        // For unassignment, we need to get current assignees and remove this user
+        try {
+            const response = await fetch(`/get_task_assignees/${taskId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // Filter out the user being unassigned
+                userIds.push(...data.assignee_ids.filter(id => id !== parseInt(userId)));
+            } else {
+                console.error('Failed to get current assignees:', data.message);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error fetching current assignees:', error);
+            return false;
+        }
+    }
+    
+    try {
+        const response = await fetch('/update_task_assignments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_ids: userIds,
+                task_id: taskId
+            })
+        });
+        
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
+        console.error('Error updating assignment:', error);
+        return false;
+    }
+}
+
+// Function to update the task card to reflect new assignees
+function updateTaskUsersDisplay(taskId) {
+    const taskElement = document.getElementById(`task-${taskId}`);
+    if (!taskElement) return;
+    
+    fetch(`/get_task_assignees/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Find all users that match the assignee IDs
+                const assignedUsers = projectParticipants.filter(
+                    participant => data.assignee_ids.includes(participant.user_id)
+                );
+                
+                // Update the UI element showing assigned users
+                const usersContainer = taskElement.querySelector('.task-users');
+                if (usersContainer) {
+                    usersContainer.innerHTML = '';
+                    
+                    assignedUsers.forEach(user => {
+                        const initial = document.createElement('span');
+                        initial.className = 'user-initials';
+                        initial.title = user.name;
+                        initial.textContent = user.name.charAt(0);
+                        usersContainer.appendChild(initial);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task users display:', error);
+        });
+}
 
 $(document).ready(function(){
     $('[data-toggle="popover"]').popover({
@@ -505,38 +605,6 @@ $(document).ready(function(){
         placement: 'top'
     });
 });
-
-function submitAssignUserForm() {
-    const participantListDiv = document.getElementById('participant-list');
-    const assignedButtons = participantListDiv.querySelectorAll('button[data-action="unassign"]'); 
-    const selectedUserIds = Array.from(assignedButtons).map(button => button.getAttribute('data-user-id'));
-    
-    const data = {
-        user_ids: selectedUserIds,
-        task_id: document.getElementById('assign_task_id').value
-    };
-
-    fetch('/update_task_assignments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            $('#assignUserModal').modal('hide');
-            location.reload();
-        } else {
-            alert('Failed to update assignments: ' + data.message);
-        }
-    })
-    .catch(error => {
-         console.error('Error updating assignments:', error);
-         alert('An error occurred while updating assignments.');
-    });
-}
 
 function createTask() {
     const title = document.getElementById('taskTitle').value;
