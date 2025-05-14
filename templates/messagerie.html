@@ -25,9 +25,11 @@
     </div>
   </div>
 </div>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
 let currentProjectId = null;
 let userName = "{{ user_first_name|default('Vous') }}";
+const socket = io();
 
 // Load projects in sidebar
 function loadProjects() {
@@ -51,10 +53,21 @@ function loadProjects() {
 
 // Select a project and load messages
 function selectProject(projectId, projectName) {
+  leaveCurrentProject();
   currentProjectId = projectId;
   document.getElementById('message-input').disabled = false;
   document.getElementById('send-message').disabled = false;
   loadMessages(projectId);
+
+  // Join the WebSocket room for the selected project
+  socket.emit('join_project', { project_id: projectId });
+}
+
+// Leave the current project room when switching projects
+function leaveCurrentProject() {
+  if (currentProjectId) {
+    socket.emit('leave_project', { project_id: currentProjectId });
+  }
 }
 
 // Load messages for a project
@@ -89,29 +102,66 @@ function loadMessages(projectId) {
     });
 }
 
-// Send a message
+// Send a message via WebSocket
 document.getElementById('send-message').onclick = function() {
   const input = document.getElementById('message-input');
   const content = input.value.trim();
   if (!content || !currentProjectId) return;
-  fetch('/api/send_message', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({project_id: currentProjectId, content})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      input.value = '';
-      loadMessages(currentProjectId);
-    }
-  });
+
+  // Emit the message to the server
+  socket.emit('send_message', { project_id: currentProjectId, content });
+  input.value = '';
+
+  // Append the message to the chat history dynamically
+  const chat = document.getElementById('chat-history');
+  const div = document.createElement('div');
+  div.className = 'mb-3 text-end';
+  div.style.maxWidth = '60%';
+  div.style.marginLeft = 'auto';
+  const bubble = document.createElement('div');
+  bubble.style.background = '#4262e2';
+  bubble.style.color = '#fff';
+  bubble.style.padding = '10px 15px';
+  bubble.style.borderRadius = '15px';
+  bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  bubble.innerHTML = `<strong>Vous</strong>
+    <p class="mb-0" style="margin: 5px 0;">${content}</p>
+    <small class="text-muted">${new Date().toLocaleTimeString()}</small>`;
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
 };
+
+// Listen for new messages
+socket.on('new_message', function(data) {
+  if (data.project_id === currentProjectId) {
+    const chat = document.getElementById('chat-history');
+    const div = document.createElement('div');
+    div.className = 'mb-3' + (data.sender_name === userName ? ' text-end' : '');
+    div.style.maxWidth = '60%';
+    if (data.sender_name === userName) div.style.marginLeft = 'auto';
+    const bubble = document.createElement('div');
+    bubble.style.background = data.sender_name === userName ? '#4262e2' : '#fff';
+    bubble.style.color = data.sender_name === userName ? '#fff' : '#000';
+    bubble.style.padding = '10px 15px';
+    bubble.style.borderRadius = '15px';
+    bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    bubble.innerHTML = `<strong>${data.sender_name === userName ? 'Vous' : data.sender_name}</strong>
+      <p class="mb-0" style="margin: 5px 0;">${data.content}</p>
+      <small class="text-muted">${data.timestamp}</small>`;
+    div.appendChild(bubble);
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+});
 
 // Send message on Enter key
 document.getElementById('message-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') document.getElementById('send-message').click();
 });
+
+// Leave the current project room when the page is unloaded
+window.addEventListener('beforeunload', leaveCurrentProject);
 
 // Initial load
 loadProjects();
