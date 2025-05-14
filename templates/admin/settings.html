@@ -30,26 +30,14 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Maintenance du système</h5>
+                    <h5 class="mb-0">Maintenance de la base des donnees</h5>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         <button class="btn btn-info" id="backupDbBtn">
                             <i class="fas fa-database me-2"></i> Sauvegarder la base de données
                         </button>
-                        <button class="btn btn-danger" id="maintenanceModeBtn">
-                            <i class="fas fa-tools me-2"></i> Mode maintenance
-                        </button>
                     </div>
-                </div>
-            </div>
-            
-            <!-- New card for database import -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Importer une base de données</h5>
-                </div>
-                <div class="card-body">
                     <form action="{{ url_for('import_database') }}" method="POST" enctype="multipart/form-data" id="importDatabaseForm">
                         <div class="mb-3">
                             <label for="database_file" class="form-label">Sélectionner un fichier .db</label>
@@ -95,11 +83,6 @@
         document.getElementById('backupDbBtn').addEventListener('click', function() {
             // Redirect to the backup endpoint to download the database
             window.location.href = "{{ url_for('backup_database') }}";
-        });
-        
-        document.getElementById('maintenanceModeBtn').addEventListener('click', function() {
-            // In a real application, this would toggle maintenance mode
-            confirm('Êtes-vous sûr de vouloir activer le mode maintenance? Les utilisateurs ne pourront pas accéder à l\'application.');
         });
 
         // Add confirmation for database import
