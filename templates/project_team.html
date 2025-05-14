@@ -15,9 +15,9 @@
                             <div class="font-weight-bold">{{ participant.name }}</div>
                             <small class="text-muted">Rôle : 
                                 {% if participant.role == 'Owner' %}
-                                    Propriétaire
+                                    Chef de projet
                                 {% elif participant.role == 'Admin' %}
-                                    Administrateur
+                                    Chef de projet
                                 {% elif participant.role == 'Member' %}
                                     Membre
                                 {% else %}
@@ -54,9 +54,9 @@
                         <label for="role">Rôle</label>
                         <select class="form-control" id="role" name="role" required>
                             <option value="Member">Membre</option>
-                            <option value="Admin">Administrateur</option>
+                            <option value="Admin">Chef de projet</option>
                             {# Optionally add Owner if needed, but usually assigned on creation #}
-                            {# <option value="Owner">Propriétaire</option> #}
+                            {# <option value="Owner">Chef de projet</option> #}
                         </select>
                     </div>
                     <input type="hidden" id="project_id" name="project_id" value="{{ project.project_id }}">

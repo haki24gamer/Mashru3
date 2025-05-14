@@ -85,8 +85,8 @@
                                     <td>{{ participant.email }}</td>
                                     <td>
                                         <select class="form-select role-select" data-user-id="{{ participant.user_id }}">
-                                            <option value="Owner" {% if participant.role == 'Owner' %}selected{% endif %}>Propriétaire</option>
-                                            <option value="Admin" {% if participant.role == 'Admin' %}selected{% endif %}>Admin</option>
+                                            <option value="Owner" {% if participant.role == 'Owner' %}selected{% endif %}>Chef de projet</option>
+                                            <option value="Admin" {% if participant.role == 'Admin' %}selected{% endif %}>Chef de projet</option>
                                             <option value="Member" {% if participant.role == 'Member' %}selected{% endif %}>Membre</option>
                                             <option value="Viewer" {% if participant.role == 'Viewer' %}selected{% endif %}>Observateur</option>
                                         </select>
@@ -139,7 +139,7 @@
                         </div>
                         <div class="col-md-4">
                             <select class="form-select" id="new-member-role">
-                                <option value="Admin">Admin</option>
+                                <option value="Admin">Chef de projet</option>
                                 <option value="Member" selected>Membre</option>
                                 <option value="Viewer">Observateur</option>
                             </select>

@@ -193,7 +193,7 @@ def handle_send_message(data):
 def get_task_assignees(task_id):
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
+    # Propriétaire
     # Get the task
     task = db.session.get(Task, task_id)
     if not task:
@@ -686,7 +686,7 @@ def update_member_role():
         ).first()
         
         if target_participation and target_participation.role == 'Owner':
-            return jsonify({'success': False, 'message': 'You cannot change the Owner\'s role'}), 403
+            return jsonify({'success': False, 'message': 'You cannot change the Chef de projet\'s role'}), 403
     
     try:
         participation = Participate.query.filter_by(
@@ -731,7 +731,7 @@ def remove_member():
         ).first()
         
         if target_participation and target_participation.role == 'Owner':
-            return jsonify({'success': False, 'message': 'You cannot remove the Owner of the project'}), 403
+            return jsonify({'success': False, 'message': 'You cannot remove the Chef de projet of the project'}), 403
     
     # Check if user is trying to remove themselves
     if int(target_user_id) == session['user_id']:
@@ -778,7 +778,7 @@ def delete_project(project_id):
     ).first()
     
     if not participation or participation.role != 'Owner':
-        return jsonify({'success': False, 'message': 'Only the project Owner can delete the project'}), 403
+        return jsonify({'success': False, 'message': 'Only the Chef de projet can delete the project'}), 403
     
     try:
         project = db.session.get(Project, project_id)
@@ -1194,14 +1194,14 @@ def add_task():
     data = request.get_json()
     project_id = data.get('project_id')
 
-    # Permission Check: Only project Owner or Admin can add tasks
+    # Permission Check: Only project Chef de projet can add tasks
     participation = Participate.query.filter_by(
         user_id=session['user_id'],
         project_id=project_id
     ).first()
 
     if not participation or participation.role not in ['Owner', 'Admin']:
-        return jsonify({'success': False, 'message': 'Permission denied: Only project admins can create tasks.'}), 403
+        return jsonify({'success': False, 'message': 'Permission denied: Only project chef de projet can create tasks.'}), 403
 
     # Convert date strings to date objects, handle empty strings
     start_date_str = data.get('start_date')
@@ -1309,7 +1309,7 @@ def update_task_status():
         is_assigned_to_task = Assigned.query.filter_by(user_id=current_user_id, task_id=task_id).first()
 
         if not is_project_admin and not is_assigned_to_task:
-            return jsonify({'success': False, 'message': 'Permission denied: You must be an admin or assigned to this task to change its status.'}), 403
+            return jsonify({'success': False, 'message': 'Permission denied: You must be a chef de projet or assigned to this task to change its status.'}), 403
             
         # Store the old status for notification message
         old_status = task.status
@@ -1409,7 +1409,7 @@ def update_task(task_id):
         is_assigned_to_task = Assigned.query.filter_by(user_id=current_user_id, task_id=task.task_id).first()
 
         if not is_project_admin and not is_assigned_to_task:
-            return jsonify({'success': False, 'message': 'Permission denied: You must be an admin or assigned to this task to edit it.'}), 403
+            return jsonify({'success': False, 'message': 'Permission denied: You must be a chef de projet or assigned to this task to edit it.'}), 403
         
         try:
             task.title = data.get('title', task.title)
@@ -1452,7 +1452,7 @@ def delete_task(task_id):
     is_assigned_to_task = Assigned.query.filter_by(user_id=current_user_id, task_id=task.task_id).first()
 
     if not is_project_admin and not is_assigned_to_task:
-        return jsonify({'success': False, 'message': 'Permission denied: You must be an admin or assigned to this task to delete it.'}), 403
+        return jsonify({'success': False, 'message': 'Permission denied: You must be a chef de projet or assigned to this task to delete it.'}), 403
 
     try:
         # Delete associated assignments first to maintain integrity
@@ -1572,8 +1572,8 @@ def add_member():
             # Map English role to French for notification message
             role_en = data['role']
             role_fr_map = {
-                'Owner': 'Propriétaire',
-                'Admin': 'Administrateur',
+                'Owner': 'Chef de projet',
+                'Admin': 'Chef de projet',
                 'Member': 'Membre'
             }
             role_fr = role_fr_map.get(role_en, role_en) # Fallback to English if not found
@@ -1670,8 +1670,8 @@ def respond_invitation():
             # This is fragile. Ideally, store the role ('Owner', 'Admin', 'Member') 
             # in a separate field or reliably encoded in the content.
             role_fr_map_reverse = {
-                'Propriétaire': 'Owner',
-                'Administrateur': 'Admin',
+                'Chef de projet': 'Owner',
+                'Chef de projet': 'Admin',
                 'Membre': 'Member'
             }
             role_en = 'Member' # Default role
