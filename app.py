@@ -594,9 +594,10 @@ def inject_user_data():
         if user:
             return {
                 'user_first_name': user.name,
-                'user_image': user.image
+                'user_image': user.image,
+                'is_admin': user.is_admin  # Add admin status here
             }
-    return {'user_first_name': None, 'user_image': None}
+    return {'user_first_name': None, 'user_image': None, 'is_admin': False}
 
 @app.route('/dashboard')
 def dashboard():
