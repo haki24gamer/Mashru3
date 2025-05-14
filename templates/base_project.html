@@ -11,7 +11,7 @@
             <li><a href="{{ url_for('project_detail', project_id=project.project_id, tab='timeline') }}" class="{% if request.args.get('tab') == 'timeline' %}active{% endif %}">Chronologie</a></li>
             <li><a href="{{ url_for('project_detail', project_id=project.project_id, tab='tasks') }}" class="{% if request.args.get('tab') == 'tasks' %}active{% endif %}">Tâches</a></li>
             <li><a href="{{ url_for('project_detail', project_id=project.project_id, tab='team') }}" class="{% if request.args.get('tab') == 'team' %}active{% endif %}">Équipe</a></li>
-            <li><a href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" class="{% if request.args.get('tab') == 'admin' %}active{% endif %}">Admin</a></li>
+            <li><a href="{{ url_for('project_detail', project_id=project.project_id, tab='admin') }}" class="{% if request.args.get('tab') == 'admin' %}active{% endif %}">Parametre</a></li>
             <li class="more-menu">•••</li>
         </ul>
     </nav>
