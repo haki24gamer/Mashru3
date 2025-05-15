@@ -414,98 +414,6 @@
         });
     }
 
-    // Function to handle individual user assignments
-    async function toggleUserAssignment(taskId, userId, isAssigning) {
-        let userIdsToSend = [];
-        const currentUserIdInt = parseInt(userId);
-
-        try {
-            // Always fetch current assignees first to build the correct list
-            const assigneesResponse = await fetch(`/get_task_assignees/${taskId}`);
-            const assigneesData = await assigneesResponse.json();
-
-            if (!assigneesData.success) {
-                console.error('Failed to get current assignees:', assigneesData.message);
-                alert('Erreur: Impossible de récupérer les assignations actuelles.');
-                return false;
-            }
-
-            let currentAssigneeIds = new Set(assigneesData.assignee_ids.map(id => parseInt(id)));
-
-            if (isAssigning) {
-                // Add the new user to the set of current assignees
-                currentAssigneeIds.add(currentUserIdInt);
-            } else {
-                // Remove the user from the set of current assignees
-                currentAssigneeIds.delete(currentUserIdInt);
-            }
-            userIdsToSend = Array.from(currentAssigneeIds);
-
-        } catch (error) {
-            console.error('Error fetching current assignees or preparing list:', error);
-            alert('Erreur lors de la préparation de la liste des assignations.');
-            return false;
-        }
-        
-        try {
-            const response = await fetch('/update_task_assignments', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    user_ids: userIdsToSend, // Send the consolidated list
-                    task_id: taskId
-                })
-            });
-            
-            const data = await response.json();
-            if (!data.success) {
-                console.error('Failed to update assignments:', data.message);
-                alert('Erreur: ' + (data.message || 'Impossible de mettre à jour les assignations.'));
-            }
-            return data.success;
-        } catch (error) {
-            console.error('Error updating assignment:', error);
-            alert('Erreur lors de la mise à jour de l\'assignation.');
-            return false;
-        }
-    }
-
-    // Function to update the task card to reflect new assignees
-    async function updateTaskUsersDisplay(taskId) {
-        const taskElement = document.getElementById(`task-${taskId}`);
-        if (!taskElement) return;
-        
-        fetch(`/get_task_assignees/${taskId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Find all users that match the assignee IDs
-                    const assignedUsers = projectParticipants.filter(
-                        participant => data.assignee_ids.includes(participant.user_id)
-                    );
-                    
-                    // Update the UI element showing assigned users
-                    const usersContainer = taskElement.querySelector('.task-users');
-                    if (usersContainer) {
-                        usersContainer.innerHTML = '';
-                        
-                        assignedUsers.forEach(user => {
-                            const initial = document.createElement('span');
-                            initial.className = 'user-initials';
-                            initial.title = user.name;
-                            initial.textContent = user.name.charAt(0);
-                            usersContainer.appendChild(initial);
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error updating task users display:', error);
-            });
-    }
-
     function generateTasksWithAI() {
         // Show modal with loading state
         $('#ai-tasks-loading').show();
@@ -652,96 +560,50 @@
         });
     }
 
-    // Function to handle individual user assignments
-    async function toggleUserAssignment(taskId, userId, isAssigning) {
-        let userIdsToSend = [];
-        const currentUserIdInt = parseInt(userId);
+    const projectParticipants = {{ participants | tojson }};
 
-        try {
-            // Always fetch current assignees first to build the correct list
-            const assigneesResponse = await fetch(`/get_task_assignees/${taskId}`);
-            const assigneesData = await assigneesResponse.json();
+    let taskStatus = 'TODO';
 
-            if (!assigneesData.success) {
-                console.error('Failed to get current assignees:', assigneesData.message);
-                alert('Erreur: Impossible de récupérer les assignations actuelles.');
-                return false;
-            }
-
-            let currentAssigneeIds = new Set(assigneesData.assignee_ids.map(id => parseInt(id)));
-
-            if (isAssigning) {
-                // Add the new user to the set of current assignees
-                currentAssigneeIds.add(currentUserIdInt);
-            } else {
-                // Remove the user from the set of current assignees
-                currentAssigneeIds.delete(currentUserIdInt);
-            }
-            userIdsToSend = Array.from(currentAssigneeIds);
-
-        } catch (error) {
-            console.error('Error fetching current assignees or preparing list:', error);
-            alert('Erreur lors de la préparation de la liste des assignations.');
-            return false;
-        }
-        
-        try {
-            const response = await fetch('/update_task_assignments', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    user_ids: userIdsToSend, // Send the consolidated list
-                    task_id: taskId
-                })
-            });
-            
-            const data = await response.json();
-            if (!data.success) {
-                console.error('Failed to update assignments:', data.message);
-                alert('Erreur: ' + (data.message || 'Impossible de mettre à jour les assignations.'));
-            }
-            return data.success;
-        } catch (error) {
-            console.error('Error updating assignment:', error);
-            alert('Erreur lors de la mise à jour de l\'assignation.');
-            return false;
-        }
+    function setTaskStatus(status) {
+        taskStatus = status;
     }
 
-    // Function to update the task card to reflect new assignees
-    async function updateTaskUsersDisplay(taskId) {
-        const taskElement = document.getElementById(`task-${taskId}`);
-        if (!taskElement) return;
-        
-        fetch(`/get_task_assignees/${taskId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Find all users that match the assignee IDs
-                    const assignedUsers = projectParticipants.filter(
-                        participant => data.assignee_ids.includes(participant.user_id)
-                    );
-                    
-                    // Update the UI element showing assigned users
-                    const usersContainer = taskElement.querySelector('.task-users');
-                    if (usersContainer) {
-                        usersContainer.innerHTML = '';
-                        
-                        assignedUsers.forEach(user => {
-                            const initial = document.createElement('span');
-                            initial.className = 'user-initials';
-                            initial.title = user.name;
-                            initial.textContent = user.name.charAt(0);
-                            usersContainer.appendChild(initial);
-                        });
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error updating task users display:', error);
-            });
+    function createTask() {
+        const title = document.getElementById('taskTitle').value;
+        const description = document.getElementById('taskDescription').value;
+        const priority = document.getElementById('taskPriority').value;
+        const startDate = document.getElementById('taskStartDate').value;
+        const endDate = document.getElementById('taskEndDate').value;
+
+        fetch('/add_task', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                priority: priority,
+                assignee_ids: [], // Empty array since we removed the field
+                start_date: startDate,
+                end_date: endDate,
+                status: taskStatus,
+                project_id: "{{ project.project_id }}"
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                $('#newTaskModal').modal('hide');
+                location.reload(); // Reload to see the new task with assignees
+            } else {
+                alert('Failed to create task: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to create task');
+        });
     }
 </script>
 
@@ -774,12 +636,6 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="taskAssignees">Assigner à</label>
-                        <select multiple class="form-control" id="taskAssignees">
-                            <!-- Options will be populated by JavaScript -->
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="taskStartDate">Date de début</label>
                         <input type="date" class="form-control" id="taskStartDate" placeholder="dd/mm/yyyy">
                     </div>
@@ -796,333 +652,3 @@
         </div>
     </div>
 </div>
-
-<!-- Assign User Modal -->
-<div class="modal fade" id="assignUserModal" tabindex="-1" role="dialog" aria-labelledby="assignUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="assignUserModalLabel">Assigner/Désassigner des utilisateurs</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#assignUserModal').modal('hide')">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="participant-list">
-                    <p class="text-center text-muted">Chargement des participants...</p>
-                </div>
-                <input type="hidden" id="assign_task_id" name="task_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#assignUserModal').modal('hide')">Fermer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Edit Task Modal -->
-<div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editTaskModalLabel">Modifier la tâche</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#editTaskModal').modal('hide')">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="editTaskForm">
-                    <input type="hidden" id="editTaskId">
-                    <div class="form-group">
-                        <label for="editTaskTitle">Titre de la tâche</label>
-                        <input type="text" class="form-control" id="editTaskTitle" placeholder="Entrez le titre de la tâche">
-                    </div>
-                    <div class="form-group">
-                        <label for="editTaskDescription">Description</label>
-                        <textarea class="form-control" id="editTaskDescription" rows="3" placeholder="Entrez la description de la tâche"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="editTaskPriority">Priorité</label>
-                        <select class="form-control" id="editTaskPriority">
-                            <option value="low">low</option>
-                            <option value="medium">medium</option>
-                            <option value="high">high</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="editTaskStartDate">Date de début</label>
-                        <input type="date" class="form-control" id="editTaskStartDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="editTaskEndDate">Date de fin</label>
-                        <input type="date" class="form-control" id="editTaskEndDate">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#editTaskModal').modal('hide')">Annuler</button>
-                <button type="button" class="btn btn-primary" onclick="updateTask()">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- AI Generated Tasks Modal -->
-<div class="modal fade" id="aiGeneratedTasksModal" tabindex="-1" role="dialog" aria-labelledby="aiGeneratedTasksModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="aiGeneratedTasksModalLabel">Tâches générées par IA</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#aiGeneratedTasksModal').modal('hide')">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="ai-tasks-loading" class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="sr-only">Chargement...</span>
-                    </div>
-                    <p class="mt-2">L'IA génère des tâches basées sur la description de votre projet...</p>
-                </div>
-                
-                <div id="ai-tasks-error" class="alert alert-danger" style="display: none;">
-                    Une erreur s'est produite lors de la génération des tâches.
-                </div>
-                
-                <div id="ai-tasks-container" style="display: none;">
-                    <p class="mb-3">Voici les tâches suggérées par l'IA en se basant sur la description de votre projet. Sélectionnez celles que vous souhaitez ajouter :</p>
-                    <div id="ai-tasks-list" class="mb-3">
-                        <!-- Tasks will be populated here -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#aiGeneratedTasksModal').modal('hide')">Annuler</button>
-                <button type="button" class="btn btn-primary" id="addSelectedTasksBtn" style="display: none;" onclick="addSelectedTasks()">Ajouter les tâches sélectionnées</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-const projectParticipants = {{ participants | tojson }};
-
-let taskStatus = 'TODO';
-
-function setTaskStatus(status) {
-    taskStatus = status;
-}
-
-async function openAssignModal(taskId) {
-    document.getElementById('assign_task_id').value = taskId;
-    const participantListDiv = document.getElementById('participant-list');
-    participantListDiv.innerHTML = '<p class="text-center text-muted">Chargement...</p>';
-
-    try {
-        const response = await fetch(`/get_task_assignees/${taskId}`);
-        const data = await response.json();
-
-        if (!data.success) {
-            participantListDiv.innerHTML = `<p class="text-danger">Erreur: ${data.message}</p>`;
-            $('#assignUserModal').modal('show');
-            return;
-        }
-
-        const currentAssigneeIds = new Set(data.assignee_ids);
-        participantListDiv.innerHTML = '';
-
-        if (projectParticipants.length === 0) {
-             participantListDiv.innerHTML = '<p class="text-center text-muted">Aucun participant dans ce projet.</p>';
-        }
-
-        projectParticipants.forEach(participant => {
-            const isAssigned = currentAssigneeIds.has(participant.user_id);
-            const action = isAssigned ? 'unassign' : 'assign';
-            const btnClass = isAssigned ? 'btn-outline-danger' : 'btn-success';
-            const btnText = isAssigned ? 'Désassigner' : 'Assigner';
-
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'd-flex justify-content-between align-items-center mb-2 p-2 border rounded';
-            itemDiv.innerHTML = `
-                <span>${participant.name} (${participant.email})</span>
-                <button type="button" class="btn btn-sm ${btnClass} toggle-assign-btn" data-user-id="${participant.user_id}" data-action="${action}">
-                    ${btnText}
-                </button>
-            `;
-            participantListDiv.appendChild(itemDiv);
-        });
-
-    } catch (error) {
-        console.error('Error fetching or building assignees list:', error);
-        participantListDiv.innerHTML = `<p class="text-danger">Erreur lors du chargement des assignations.</p>`;
-    } finally {
-        $('#assignUserModal').modal('show');
-    }
-}
-
-document.getElementById('participant-list').addEventListener('click', function(event) {
-    if (event.target.classList.contains('toggle-assign-btn')) {
-        const button = event.target;
-        const currentAction = button.getAttribute('data-action');
-        const userId = button.getAttribute('data-user-id');
-        const taskId = document.getElementById('assign_task_id').value;
-
-        // Show loading state
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-        
-        // Call function to update assignment
-        toggleUserAssignment(taskId, userId, currentAction === 'assign')
-            .then(success => {
-                if (success) {
-                    // Toggle button state
-                    if (currentAction === 'assign') {
-                        button.setAttribute('data-action', 'unassign');
-                        button.classList.remove('btn-success');
-                        button.classList.add('btn-outline-danger');
-                        button.textContent = 'Désassigner';
-                    } else {
-                        button.setAttribute('data-action', 'assign');
-                        button.classList.remove('btn-outline-danger');
-                        button.classList.add('btn-success');
-                        button.textContent = 'Assigner';
-                    }
-                    
-                    // Update the UI to reflect the change
-                    updateTaskUsersDisplay(taskId);
-                } else {
-                    // Restore original button state on error
-                    button.textContent = originalText;
-                    alert('Échec de la mise à jour de l\'assignation');
-                }
-            })
-            .finally(() => {
-                button.disabled = false;
-            });
-    }
-});
-
-$(document).ready(function(){
-    $('[data-toggle="popover"]').popover({
-        html: true,
-        placement: 'top'
-    });
-});
-
-function createTask() {
-    const title = document.getElementById('taskTitle').value;
-    const description = document.getElementById('taskDescription').value;
-    const priority = document.getElementById('taskPriority').value;
-    const startDate = document.getElementById('taskStartDate').value;
-    const endDate = document.getElementById('taskEndDate').value;
-    const assigneesSelect = document.getElementById('taskAssignees');
-    const assignee_ids = [...assigneesSelect.selectedOptions].map(option => option.value);
-
-    fetch('/add_task', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            title: title,
-            description: description,
-            priority: priority,
-            assignee_ids: assignee_ids,
-            start_date: startDate,
-            end_date: endDate,
-            status: taskStatus,
-            project_id: "{{ project.project_id }}"
-        }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            $('#newTaskModal').modal('hide');
-            location.reload(); // Reload to see the new task with assignees
-        } else {
-            alert('Failed to create task: ' + (data.message || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to create task');
-    });
-}
-
-// Populate assignees when New Task Modal is shown
-$('#newTaskModal').on('show.bs.modal', function () {
-    const assigneesSelect = document.getElementById('taskAssignees');
-    assigneesSelect.innerHTML = ''; // Clear existing options
-
-    if (projectParticipants && projectParticipants.length > 0) {
-        projectParticipants.forEach(participant => {
-            const option = document.createElement('option');
-            option.value = participant.user_id;
-            option.textContent = `${participant.name} (${participant.email})`;
-            assigneesSelect.appendChild(option);
-        });
-    } else {
-        const option = document.createElement('option');
-        option.disabled = true;
-        option.textContent = 'Aucun participant à assigner';
-        assigneesSelect.appendChild(option);
-    }
-    // If you are using a library like Select2 or Choices.js, you might need to re-initialize it here.
-});
-
-function editTask(taskId) {
-    event.stopPropagation();
-    
-    fetch(`/get_task/${taskId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('editTaskId').value = data.task.task_id;
-                document.getElementById('editTaskTitle').value = data.task.title;
-                document.getElementById('editTaskDescription').value = data.task.description;
-                document.getElementById('editTaskPriority').value = data.task.priority;
-                document.getElementById('editTaskStartDate').value = data.task.start_date;
-                document.getElementById('editTaskEndDate').value = data.task.end_date;
-                
-                $('#editTaskModal').modal('show');
-            } else {
-                alert('Failed to fetch task details');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching task details:', error);
-        });
-}
-
-function updateTask() {
-    const taskId = document.getElementById('editTaskId').value;
-    const data = {
-        title: document.getElementById('editTaskTitle').value,
-        description: document.getElementById('editTaskDescription').value,
-        priority: document.getElementById('editTaskPriority').value,
-        start_date: document.getElementById('editTaskStartDate').value,
-        end_date: document.getElementById('editTaskEndDate').value
-    };
-    
-    fetch(`/update_task/${taskId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            $('#editTaskModal').modal('hide');
-            location.reload();
-        } else {
-            alert('Failed to update task: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error updating task:', error);
-    });
-}
-</script>
