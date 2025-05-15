@@ -2729,5 +2729,20 @@ def diagnostic():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        
+        # Check if admin user exists
+        admin_user = User.query.filter_by(email="admin@example.com").first()
+        if not admin_user:
+            # Create the admin user
+            admin = User(
+                name="Admin User",
+                email="admin@example.com",
+                password=generate_password_hash("secure_password"),
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin user created with email: admin@example.com and password: secure_password")
+            
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, debug=True, port=port, host="0.0.0.0")
