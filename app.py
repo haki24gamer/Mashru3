@@ -378,37 +378,46 @@ def generate_tasks_for_project(project_id):
     try:
         # Create prompt for Gemini AI
         prompt = f"""
-        En tant qu'expert en gestion de projet, génère une liste de 5-7 tâches concrètes pour un projet nommé "{project.name}" avec cette description: "{project.description}".
-        
+        En tant qu'expert en gestion de projet, génère une liste de 5 à 7 tâches concrètes pour un projet nommé "{project.name}" avec cette description: "{project.description}".
+
         Pour chaque tâche, fournis:
         1. Un titre court et clair
         2. Une description détaillée
         3. Une priorité (low, medium, ou high)
-        
+        4. Une date de début (start_date) et une date de fin (end_date) au format AAAA-MM-JJ
+           - Les dates doivent être ordonnées logiquement (les tâches doivent se suivre ou se chevaucher si pertinent)
+           - La première tâche commence à la date d'aujourd'hui ou dans un futur proche
+           - Les tâches suivantes suivent dans un ordre logique pour le projet
+
         Format de réponse (JSON):
         {{
           "tasks": [
             {{
               "title": "Titre de la tâche 1",
               "description": "Description détaillée de la tâche 1",
-              "priority": "medium"
+              "priority": "medium",
+              "start_date": "2024-06-01",
+              "end_date": "2024-06-05"
             }},
             {{
               "title": "Titre de la tâche 2",
               "description": "Description détaillée de la tâche 2",
-              "priority": "high"
+              "priority": "high",
+              "start_date": "2024-06-06",
+              "end_date": "2024-06-10"
             }},
             ...
           ]
         }}
-        
+
         Assure-toi que:
         - Les tâches sont adaptées au type de projet spécifié
         - Les tâches couvrent différentes phases du projet (planification, exécution, finalisation)
         - Les priorités sont diversifiées et logiques
+        - Les dates sont cohérentes et ordonnées
         - Le JSON est valide, sans commentaires ni texte supplémentaire
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
@@ -432,6 +441,11 @@ def generate_tasks_for_project(project_id):
                     'message': 'Format de réponse IA invalide',
                     'raw_response': text_response
                 }), 500
+
+            # Ensure all tasks have start_date and end_date fields (optional: fallback to None if missing)
+            for task in tasks_data.get('tasks', []):
+                task.setdefault('start_date', None)
+                task.setdefault('end_date', None)
                 
             return jsonify({
                 'success': True,

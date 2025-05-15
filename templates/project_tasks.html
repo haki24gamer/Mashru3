@@ -553,8 +553,12 @@
                 </div>
                 <div class="card-body">
                     <p>${task.description}</p>
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between mb-2">
                         <span class="badge ${getPriorityBadgeClass(task.priority)}">${task.priority}</span>
+                        <span>
+                            ${task.start_date ? `<i class="material-icons-outlined" style="font-size:16px;vertical-align:middle;">event</i> ${task.start_date}` : ''}
+                            ${task.end_date ? ` &rarr; ${task.end_date}` : ''}
+                        </span>
                     </div>
                 </div>
             `;
@@ -616,7 +620,9 @@
                     description: task.description,
                     priority: task.priority.toLowerCase(),
                     status: 'TODO',
-                    project_id: "{{ project.project_id }}"
+                    project_id: "{{ project.project_id }}",
+                    start_date: task.start_date || null,
+                    end_date: task.end_date || null
                 }),
             })
             .then(response => response.json())
