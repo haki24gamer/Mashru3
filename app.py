@@ -308,6 +308,106 @@ def generate_specification_content():
             'message': f'Erreur lors de la génération: {str(e)}'
         }), 500
 
+@app.route('/generate_tasks_for_project/<int:project_id>', methods=['GET'])
+def generate_tasks_for_project(project_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    # Check if user has access to this project
+    participation = Participate.query.filter_by(
+        user_id=session['user_id'],
+        project_id=project_id
+    ).first()
+    
+    if not participation:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    # Only allow project admins to generate tasks
+    if participation.role not in ['Owner', 'Admin']:
+        return jsonify({'success': False, 'message': 'Permission denied: Only project admins can generate tasks'}), 403
+    
+    # Get project details
+    project = db.session.get(Project, project_id)
+    if not project:
+        return jsonify({'success': False, 'message': 'Project not found'}), 404
+    
+    try:
+        # Create prompt for Gemini AI
+        prompt = f"""
+        En tant qu'expert en gestion de projet, génère une liste de 5-7 tâches concrètes pour un projet nommé "{project.name}" avec cette description: "{project.description}".
+        
+        Pour chaque tâche, fournis:
+        1. Un titre court et clair
+        2. Une description détaillée
+        3. Une priorité (low, medium, ou high)
+        
+        Format de réponse (JSON):
+        {{
+          "tasks": [
+            {{
+              "title": "Titre de la tâche 1",
+              "description": "Description détaillée de la tâche 1",
+              "priority": "medium"
+            }},
+            {{
+              "title": "Titre de la tâche 2",
+              "description": "Description détaillée de la tâche 2",
+              "priority": "high"
+            }},
+            ...
+          ]
+        }}
+        
+        Assure-toi que:
+        - Les tâches sont adaptées au type de projet spécifié
+        - Les tâches couvrent différentes phases du projet (planification, exécution, finalisation)
+        - Les priorités sont diversifiées et logiques
+        - Le JSON est valide, sans commentaires ni texte supplémentaire
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        
+        # Parse the JSON from the response text
+        try:
+            import json
+            import re
+            
+            # Try to find a JSON object in the response text
+            text_response = response.text
+            json_match = re.search(r'\{.*\}', text_response, re.DOTALL)
+            
+            if json_match:
+                tasks_data = json.loads(json_match.group(0))
+            else:
+                # If no JSON found, return error
+                return jsonify({
+                    'success': False,
+                    'message': 'Format de réponse IA invalide',
+                    'raw_response': text_response
+                }), 500
+                
+            return jsonify({
+                'success': True,
+                'tasks': tasks_data.get('tasks', [])
+            })
+                
+        except Exception as parsing_error:
+            return jsonify({
+                'success': False,
+                'message': f'Erreur de format dans la réponse IA: {str(parsing_error)}',
+                'raw_response': response.text
+            }), 500
+            
+    except Exception as e:
+        print(f"AI generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de la génération des tâches: {str(e)}'
+        }), 500
+
 @app.route('/get_task_assignees/<int:task_id>')
 def get_task_assignees(task_id):
     if 'user_id' not in session:

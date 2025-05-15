@@ -2,9 +2,14 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Tâches du projet</h3>
         {% if is_project_admin %}
-        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
-            <i class="material-icons-outlined">add</i> Nouvelle tâche
-        </button>
+        <div>
+            <button type="button" class="btn btn-success me-2" id="generateTasksAIBtn" onclick="generateTasksWithAI()">
+                <i class="material-icons-outlined">psychology</i> Générer des tâches avec IA
+            </button>
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newTaskModal" onclick="setTaskStatus('TODO')">
+                <i class="material-icons-outlined">add</i> Nouvelle tâche
+            </button>
+        </div>
         {% endif %}
     </div>
     <div class="kanban-container mt-4">
@@ -273,6 +278,18 @@
     .user-initials:first-child {
         margin-left: 0;
     }
+
+    /* Add style for AI button */
+    .btn-success {
+        margin-right: 10px;
+    }
+
+    /* Fix for material icons in buttons */
+    .material-icons-outlined {
+        vertical-align: middle;
+        font-size: 18px;
+        margin-right: 4px;
+    }
 </style>
 
 <script>
@@ -488,6 +505,238 @@
                 console.error('Error updating task users display:', error);
             });
     }
+
+    function generateTasksWithAI() {
+        // Show modal with loading state
+        $('#ai-tasks-loading').show();
+        $('#ai-tasks-container').hide();
+        $('#ai-tasks-error').hide();
+        $('#addSelectedTasksBtn').hide();
+        $('#aiGeneratedTasksModal').modal('show');
+        
+        // Make API call to generate tasks
+        fetch(`/generate_tasks_for_project/{{ project.project_id }}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.tasks && data.tasks.length > 0) {
+                    // Show generated tasks
+                    displayGeneratedTasks(data.tasks);
+                } else {
+                    throw new Error(data.message || 'Aucune tâche générée');
+                }
+            })
+            .catch(error => {
+                console.error('Error generating tasks:', error);
+                $('#ai-tasks-loading').hide();
+                $('#ai-tasks-error').text(`Erreur: ${error.message || 'Impossible de générer des tâches.'}`).show();
+            });
+    }
+
+    function displayGeneratedTasks(tasks) {
+        const tasksContainer = document.getElementById('ai-tasks-list');
+        tasksContainer.innerHTML = '';
+        
+        tasks.forEach((task, index) => {
+            const taskElement = document.createElement('div');
+            taskElement.className = 'card mb-3';
+            taskElement.innerHTML = `
+                <div class="card-header">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input task-checkbox" id="task-${index}" checked>
+                        <label class="custom-control-label font-weight-bold" for="task-${index}">${task.title}</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p>${task.description}</p>
+                    <div class="d-flex justify-content-between">
+                        <span class="badge ${getPriorityBadgeClass(task.priority)}">${task.priority}</span>
+                    </div>
+                </div>
+            `;
+            tasksContainer.appendChild(taskElement);
+        });
+        
+        // Store tasks in a global variable for later use
+        window.generatedTasks = tasks;
+        
+        // Hide loading, show content and add button
+        $('#ai-tasks-loading').hide();
+        $('#ai-tasks-container').show();
+        $('#addSelectedTasksBtn').show();
+    }
+
+    function getPriorityBadgeClass(priority) {
+        switch(priority.toLowerCase()) {
+            case 'high': return 'bg-danger';
+            case 'medium': return 'bg-warning';
+            case 'low': return 'bg-info';
+            default: return 'bg-secondary';
+        }
+    }
+
+    function addSelectedTasks() {
+        if (!window.generatedTasks) return;
+        
+        const selectedTasks = [];
+        const checkboxes = document.querySelectorAll('.task-checkbox');
+        
+        checkboxes.forEach((checkbox, index) => {
+            if (checkbox.checked && window.generatedTasks[index]) {
+                selectedTasks.push(window.generatedTasks[index]);
+            }
+        });
+        
+        if (selectedTasks.length === 0) {
+            alert('Veuillez sélectionner au moins une tâche à ajouter.');
+            return;
+        }
+        
+        // Show loading state
+        $('#addSelectedTasksBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Ajout en cours...');
+        
+        // Counter for tracking task creation progress
+        let completedTasks = 0;
+        let failedTasks = 0;
+        
+        // Process each selected task
+        selectedTasks.forEach(task => {
+            // Create the task via API
+            fetch('/add_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: task.title,
+                    description: task.description,
+                    priority: task.priority.toLowerCase(),
+                    status: 'TODO',
+                    project_id: "{{ project.project_id }}"
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    completedTasks++;
+                } else {
+                    failedTasks++;
+                    console.error('Failed to create task:', data.message);
+                }
+            })
+            .catch(error => {
+                failedTasks++;
+                console.error('Error creating task:', error);
+            })
+            .finally(() => {
+                // Check if all tasks have been processed
+                if (completedTasks + failedTasks === selectedTasks.length) {
+                    if (failedTasks > 0) {
+                        alert(`${completedTasks} tâches ajoutées avec succès. ${failedTasks} tâches n'ont pas pu être ajoutées.`);
+                    }
+                    // Close modal and reload page to show new tasks
+                    $('#aiGeneratedTasksModal').modal('hide');
+                    location.reload();
+                }
+            });
+        });
+    }
+
+    // Function to handle individual user assignments
+    async function toggleUserAssignment(taskId, userId, isAssigning) {
+        let userIdsToSend = [];
+        const currentUserIdInt = parseInt(userId);
+
+        try {
+            // Always fetch current assignees first to build the correct list
+            const assigneesResponse = await fetch(`/get_task_assignees/${taskId}`);
+            const assigneesData = await assigneesResponse.json();
+
+            if (!assigneesData.success) {
+                console.error('Failed to get current assignees:', assigneesData.message);
+                alert('Erreur: Impossible de récupérer les assignations actuelles.');
+                return false;
+            }
+
+            let currentAssigneeIds = new Set(assigneesData.assignee_ids.map(id => parseInt(id)));
+
+            if (isAssigning) {
+                // Add the new user to the set of current assignees
+                currentAssigneeIds.add(currentUserIdInt);
+            } else {
+                // Remove the user from the set of current assignees
+                currentAssigneeIds.delete(currentUserIdInt);
+            }
+            userIdsToSend = Array.from(currentAssigneeIds);
+
+        } catch (error) {
+            console.error('Error fetching current assignees or preparing list:', error);
+            alert('Erreur lors de la préparation de la liste des assignations.');
+            return false;
+        }
+        
+        try {
+            const response = await fetch('/update_task_assignments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_ids: userIdsToSend, // Send the consolidated list
+                    task_id: taskId
+                })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                console.error('Failed to update assignments:', data.message);
+                alert('Erreur: ' + (data.message || 'Impossible de mettre à jour les assignations.'));
+            }
+            return data.success;
+        } catch (error) {
+            console.error('Error updating assignment:', error);
+            alert('Erreur lors de la mise à jour de l\'assignation.');
+            return false;
+        }
+    }
+
+    // Function to update the task card to reflect new assignees
+    async function updateTaskUsersDisplay(taskId) {
+        const taskElement = document.getElementById(`task-${taskId}`);
+        if (!taskElement) return;
+        
+        fetch(`/get_task_assignees/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Find all users that match the assignee IDs
+                    const assignedUsers = projectParticipants.filter(
+                        participant => data.assignee_ids.includes(participant.user_id)
+                    );
+                    
+                    // Update the UI element showing assigned users
+                    const usersContainer = taskElement.querySelector('.task-users');
+                    if (usersContainer) {
+                        usersContainer.innerHTML = '';
+                        
+                        assignedUsers.forEach(user => {
+                            const initial = document.createElement('span');
+                            initial.className = 'user-initials';
+                            initial.title = user.name;
+                            initial.textContent = user.name.charAt(0);
+                            usersContainer.appendChild(initial);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating task users display:', error);
+            });
+    }
 </script>
 
 <!-- New Task Modal -->
@@ -607,6 +856,43 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="updateTask()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Generated Tasks Modal -->
+<div class="modal fade" id="aiGeneratedTasksModal" tabindex="-1" role="dialog" aria-labelledby="aiGeneratedTasksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aiGeneratedTasksModalLabel">Tâches générées par IA</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="ai-tasks-loading" class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Chargement...</span>
+                    </div>
+                    <p class="mt-2">L'IA génère des tâches basées sur la description de votre projet...</p>
+                </div>
+                
+                <div id="ai-tasks-error" class="alert alert-danger" style="display: none;">
+                    Une erreur s'est produite lors de la génération des tâches.
+                </div>
+                
+                <div id="ai-tasks-container" style="display: none;">
+                    <p class="mb-3">Voici les tâches suggérées par l'IA en se basant sur la description de votre projet. Sélectionnez celles que vous souhaitez ajouter :</p>
+                    <div id="ai-tasks-list" class="mb-3">
+                        <!-- Tasks will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="addSelectedTasksBtn" style="display: none;" onclick="addSelectedTasks()">Ajouter les tâches sélectionnées</button>
             </div>
         </div>
     </div>
