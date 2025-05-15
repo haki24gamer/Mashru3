@@ -212,9 +212,9 @@ def generate_specification_content():
         return jsonify({'success': False, 'message': 'Nom du projet requis'}), 400
     
     try:
-        # Use Google Gemini API to generate content - fixed method call
+        # Updated prompt to request French content and proper formatting
         prompt = f"""
-        Génère un cahier des charges complet pour un projet nommé "{project_name}" avec cette description: "{project_description}".
+        Génère en français un cahier des charges complet pour un projet nommé "{project_name}" avec cette description: "{project_description}".
         
         Format de réponse (JSON):
         {{
@@ -225,10 +225,12 @@ def generate_specification_content():
             "timeline": "Calendrier prévisionnel avec phases et jalons sur 3-6 mois"
         }}
         
-        Réponds uniquement avec un objet JSON valide, sans autre texte d'introduction ou de conclusion.
+        Important:
+        1. Tout le contenu doit être en français
+        2. N'utilise pas de caractères {{ }} autour du texte dans les valeurs
+        3. Réponds uniquement avec un objet JSON valide, sans texte d'introduction ou de conclusion
         """
         
-        # Correct method call using client.models.generate_content instead of client.generate_content
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
@@ -237,28 +239,65 @@ def generate_specification_content():
         # Parse the JSON from the response text
         try:
             import json
-            content = json.loads(response.text)
+            import re
+            
+            # Clean up the response to handle potential formatting issues
+            text_response = response.text
+            
+            # Process the response - remove any braces around fields if present
+            # Remove braces that surround entire field values
+            cleaned_content = {}
+            
+            try:
+                # First try to parse as JSON directly
+                content = json.loads(text_response)
+                
+                # Clean each field by removing braces if present
+                for key, value in content.items():
+                    if isinstance(value, str):
+                        # Remove braces at start and end of the string
+                        cleaned_value = re.sub(r'^\s*\{', '', value)
+                        cleaned_value = re.sub(r'\}\s*$', '', cleaned_value)
+                        cleaned_content[key] = cleaned_value
+                    else:
+                        cleaned_content[key] = value
+                
+            except json.JSONDecodeError:
+                # If direct parsing fails, extract with regex
+                json_match = re.search(r'\{.*\}', text_response, re.DOTALL)
+                if json_match:
+                    try:
+                        content = json.loads(json_match.group(0))
+                        for key, value in content.items():
+                            if isinstance(value, str):
+                                # Remove braces at start and end of the string
+                                cleaned_value = re.sub(r'^\s*\{', '', value)
+                                cleaned_value = re.sub(r'\}\s*$', '', cleaned_value)
+                                cleaned_content[key] = cleaned_value
+                            else:
+                                cleaned_content[key] = value
+                    except:
+                        return jsonify({
+                            'success': False,
+                            'message': 'Erreur lors du traitement de la réponse JSON',
+                            'raw_response': text_response
+                        }), 500
+                else:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Format de réponse invalide',
+                        'raw_response': text_response
+                    }), 500
+            
             return jsonify({
                 'success': True, 
-                'content': content
+                'content': cleaned_content
             })
-        except json.JSONDecodeError:
-            # If the response isn't valid JSON, extract it with regex
-            import re
-            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-            if json_match:
-                try:
-                    content = json.loads(json_match.group(0))
-                    return jsonify({
-                        'success': True, 
-                        'content': content
-                    })
-                except:
-                    pass
-                    
+                
+        except Exception as parsing_error:
             return jsonify({
                 'success': False,
-                'message': 'Erreur de format dans la réponse IA',
+                'message': f'Erreur de format dans la réponse IA: {str(parsing_error)}',
                 'raw_response': response.text
             }), 500
             
