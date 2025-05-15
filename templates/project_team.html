@@ -172,4 +172,11 @@ document.getElementById('confirm-quit-btn').addEventListener('click', function()
         document.getElementById('quit-warning').textContent = 'Erreur réseau.';
     });
 });
+
+// Ensure Cancel and X buttons close the modal (fallback if data-dismiss fails)
+document.querySelectorAll('#quitProjectModal .btn-secondary, #quitProjectModal .close').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        $('#quitProjectModal').modal('hide');
+    });
+});
 </script>
