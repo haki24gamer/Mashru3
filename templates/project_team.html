@@ -70,6 +70,36 @@
     </div>
 </div>
 
+<!-- Quitter le projet : bouton et modale -->
+<div class="mt-4 d-flex justify-content-end" style="margin-top: 60px !important;">
+    <button type="button" class="btn btn-danger" id="quit-project-btn" style="height: 56px; font-size: 1.2rem; padding: 0 2.5rem;">
+        <i class="material-icons-outlined" style="vertical-align: middle; font-size: 2rem;">exit_to_app</i>
+        Quitter le projet
+    </button>
+</div>
+
+<!-- Modal de confirmation pour quitter le projet -->
+<div class="modal fade" id="quitProjectModal" tabindex="-1" role="dialog" aria-labelledby="quitProjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="quitProjectModalLabel">Quitter le projet</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Êtes-vous sûr de vouloir quitter ce projet ?<br>
+        <span class="text-danger" id="quit-warning"></span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirm-quit-btn">Quitter le projet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function submitAddMemberForm() {
     const form = document.getElementById('addMemberForm');
@@ -106,4 +136,40 @@ function submitAddMemberForm() {
         alert('Une erreur s\'est produite lors de l\'ajout du membre.');
     });
 }
+
+// Bouton "Quitter le projet"
+document.getElementById('quit-project-btn').addEventListener('click', function() {
+    // Afficher la modale de confirmation
+    $('#quitProjectModal').modal('show');
+    // Nettoyer le message d'avertissement
+    document.getElementById('quit-warning').textContent = '';
+});
+
+// Confirmation de quitter le projet
+document.getElementById('confirm-quit-btn').addEventListener('click', function() {
+    const projectId = {{ project.project_id }};
+    const userId = {{ current_user_id }};
+    fetch('/remove_member', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            user_id: userId,
+            project_id: projectId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#quitProjectModal').modal('hide');
+            alert('Vous avez quitté le projet.');
+            window.location.href = '/projects';
+        } else {
+            // Afficher l'erreur dans la modale
+            document.getElementById('quit-warning').textContent = data.message || 'Erreur lors de la tentative de quitter le projet.';
+        }
+    })
+    .catch(error => {
+        document.getElementById('quit-warning').textContent = 'Erreur réseau.';
+    });
+});
 </script>

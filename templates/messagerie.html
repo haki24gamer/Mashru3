@@ -29,6 +29,7 @@
 <script>
 let currentProjectId = null;
 let userName = "{{ user_first_name|default('Vous') }}";
+let currentUserId = {{ session['user_id'] if session['user_id'] else 'null' }};
 const socket = io();
 
 // Load projects in sidebar
@@ -79,17 +80,18 @@ function loadMessages(projectId) {
       chat.innerHTML = '';
       if (data.success && data.messages.length > 0) {
         data.messages.forEach(msg => {
+          const isMine = msg.sender_id === currentUserId;
           const div = document.createElement('div');
-          div.className = 'mb-3' + (msg.sender_name === userName ? ' text-end' : '');
+          div.className = 'mb-3' + (isMine ? ' text-end' : '');
           div.style.maxWidth = '60%';
-          if (msg.sender_name === userName) div.style.marginLeft = 'auto';
+          if (isMine) div.style.marginLeft = 'auto';
           const bubble = document.createElement('div');
-          bubble.style.background = msg.sender_name === userName ? '#4262e2' : '#fff';
-          bubble.style.color = msg.sender_name === userName ? '#fff' : '#000';
+          bubble.style.background = isMine ? '#4262e2' : '#fff';
+          bubble.style.color = isMine ? '#fff' : '#000';
           bubble.style.padding = '10px 15px';
           bubble.style.borderRadius = '15px';
           bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-          bubble.innerHTML = `<strong>${msg.sender_name === userName ? 'Vous' : msg.sender_name}</strong>
+          bubble.innerHTML = `<strong>${isMine ? 'Vous' : msg.sender_name}</strong>
             <p class="mb-0" style="margin: 5px 0;">${msg.content}</p>
             <small class="text-muted">${msg.timestamp}</small>`;
           div.appendChild(bubble);
@@ -112,41 +114,26 @@ document.getElementById('send-message').onclick = function() {
   socket.emit('send_message', { project_id: currentProjectId, content });
   input.value = '';
 
-  // Append the message to the chat history dynamically
-  const chat = document.getElementById('chat-history');
-  const div = document.createElement('div');
-  div.className = 'mb-3 text-end';
-  div.style.maxWidth = '60%';
-  div.style.marginLeft = 'auto';
-  const bubble = document.createElement('div');
-  bubble.style.background = '#4262e2';
-  bubble.style.color = '#fff';
-  bubble.style.padding = '10px 15px';
-  bubble.style.borderRadius = '15px';
-  bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-  bubble.innerHTML = `<strong>Vous</strong>
-    <p class="mb-0" style="margin: 5px 0;">${content}</p>
-    <small class="text-muted">${new Date().toLocaleTimeString()}</small>`;
-  div.appendChild(bubble);
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
+  // Remove the code that appends the message immediately
+  // The message will be displayed when the 'new_message' event is received
 };
 
 // Listen for new messages
 socket.on('new_message', function(data) {
   if (data.project_id === currentProjectId) {
+    const isMine = data.sender_id === currentUserId;
     const chat = document.getElementById('chat-history');
     const div = document.createElement('div');
-    div.className = 'mb-3' + (data.sender_name === userName ? ' text-end' : '');
+    div.className = 'mb-3' + (isMine ? ' text-end' : '');
     div.style.maxWidth = '60%';
-    if (data.sender_name === userName) div.style.marginLeft = 'auto';
+    if (isMine) div.style.marginLeft = 'auto';
     const bubble = document.createElement('div');
-    bubble.style.background = data.sender_name === userName ? '#4262e2' : '#fff';
-    bubble.style.color = data.sender_name === userName ? '#fff' : '#000';
+    bubble.style.background = isMine ? '#4262e2' : '#fff';
+    bubble.style.color = isMine ? '#fff' : '#000';
     bubble.style.padding = '10px 15px';
     bubble.style.borderRadius = '15px';
     bubble.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-    bubble.innerHTML = `<strong>${data.sender_name === userName ? 'Vous' : data.sender_name}</strong>
+    bubble.innerHTML = `<strong>${isMine ? 'Vous' : data.sender_name}</strong>
       <p class="mb-0" style="margin: 5px 0;">${data.content}</p>
       <small class="text-muted">${data.timestamp}</small>`;
     div.appendChild(bubble);
