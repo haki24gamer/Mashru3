@@ -37,6 +37,7 @@ google-cloud-core
 google-cloud-resource-manager
 google-cloud-storage
 google-crc32c
+google-genai
 google-resumable-media
 googleapis-common-protos
 greenlet
