@@ -751,7 +751,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="newTaskModalLabel">Créer une nouvelle tâche</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#newTaskModal').modal('hide')">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -790,7 +790,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#newTaskModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="createTask()">Créer la tâche</button>
             </div>
         </div>
@@ -803,7 +803,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="assignUserModalLabel">Assigner/Désassigner des utilisateurs</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#assignUserModal').modal('hide')">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -814,7 +814,7 @@
                 <input type="hidden" id="assign_task_id" name="task_id">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#assignUserModal').modal('hide')">Fermer</button>
             </div>
         </div>
     </div>
@@ -826,7 +826,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editTaskModalLabel">Modifier la tâche</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#editTaskModal').modal('hide')">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -860,7 +860,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#editTaskModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="updateTask()">Enregistrer</button>
             </div>
         </div>
@@ -873,7 +873,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="aiGeneratedTasksModalLabel">Tâches générées par IA</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#aiGeneratedTasksModal').modal('hide')">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -897,7 +897,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#aiGeneratedTasksModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" id="addSelectedTasksBtn" style="display: none;" onclick="addSelectedTasks()">Ajouter les tâches sélectionnées</button>
             </div>
         </div>
