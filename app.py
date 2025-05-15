@@ -1112,9 +1112,18 @@ def connexion():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
+        remember_me = 'remember_me' in request.form
+        
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.user_id
+            
+            # Set permanent session if "remember me" is checked
+            if remember_me:
+                session.permanent = True
+            else:
+                session.permanent = False
+                
             return redirect(url_for('dashboard'))
         else:
             # Pass error message to template
