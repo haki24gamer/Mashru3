@@ -28,6 +28,10 @@ except ImportError:
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
 app.config['SECRET_KEY'] = 'your_secret_key'
+# Add a server start timestamp
+app.config['SERVER_START_TIME'] = datetime.now().timestamp()
+# Set permanent sessions lifetime (31 days)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 db = SQLAlchemy(app)
 
 # Configure Flask-Mail for Gmail
@@ -56,6 +60,46 @@ os.makedirs(app.config['PROJECT_IMAGES_FOLDER'], exist_ok=True)
 # Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+# Add session verification before each request
+@app.before_request
+def verify_session():
+    if 'user_id' in session:
+        # Check if session was created before server restart
+        session_start_time = session.get('server_start_time')
+        if not session_start_time or session_start_time != app.config['SERVER_START_TIME']:
+            # Session is from a previous server instance, invalidate it
+            session.clear()
+            if request.path != '/connexion' and not request.path.startswith('/static/'):
+                return redirect(url_for('connexion'))
+        
+        # Check for session timeout if not permanent
+        if not session.get('permanent', False):
+            last_activity = session.get('last_activity')
+            if last_activity:
+                inactive_time = datetime.now() - datetime.fromtimestamp(last_activity)
+                if inactive_time > timedelta(minutes=15):
+                    session.clear()
+                    if request.path != '/connexion' and not request.path.startswith('/static/'):
+                        return redirect(url_for('connexion'))
+            
+            # Update last activity time
+            session['last_activity'] = datetime.now().timestamp()
+
+# Add session timeout checker before each request
+@app.before_request
+def check_session_timeout():
+    if 'user_id' in session and not session.get('permanent', False):
+        # Get the last activity time from the session
+        last_activity = session.get('last_activity')
+        if last_activity is not None:
+            # If more than 15 minutes have passed, clear the session
+            inactive_time = datetime.now() - datetime.fromtimestamp(last_activity)
+            if inactive_time > timedelta(minutes=15):
+                session.clear()
+                return redirect(url_for('connexion'))
+        # Update the last activity time
+        session['last_activity'] = datetime.now().timestamp()
 
 # User table
 class User(db.Model):
@@ -1117,6 +1161,9 @@ def connexion():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.user_id
+            session['last_activity'] = datetime.now().timestamp()
+            # Store server start time in the session
+            session['server_start_time'] = app.config['SERVER_START_TIME']
             
             # Set permanent session if "remember me" is checked
             if remember_me:
