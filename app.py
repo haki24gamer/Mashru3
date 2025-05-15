@@ -10,6 +10,15 @@ import random
 import os
 from datetime import datetime, timedelta
 import time
+from google import genai
+
+client = genai.Client(api_key="AIzaSyCejl04BWKifSf0abzSdJ7AE3UKIyjG17s")
+
+# response = client.models.generate_content(
+#     model="gemini-2.0-flash", contents="Explain how AI works in a few words")
+
+# print(response.text)
+
 try:
     import mysql.connector
 except ImportError:
@@ -188,6 +197,77 @@ def handle_send_message(data):
         'content': msg.content,
         'timestamp': msg.timestamp.strftime('%H:%M')
     }, room=project_id)
+
+@app.route('/generate_specification_content', methods=['POST'])
+def generate_specification_content():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    
+    data = request.get_json()
+    project_id = data.get('project_id')
+    project_name = data.get('project_name')
+    project_description = data.get('project_description', '')
+    
+    if not project_name:
+        return jsonify({'success': False, 'message': 'Nom du projet requis'}), 400
+    
+    try:
+        # Use Google Gemini API to generate content - fixed method call
+        prompt = f"""
+        Génère un cahier des charges complet pour un projet nommé "{project_name}" avec cette description: "{project_description}".
+        
+        Format de réponse (JSON):
+        {{
+            "objectives": "Les objectifs principaux et secondaires du projet, sous forme de texte structuré avec des puces",
+            "requirements": "Les exigences fonctionnelles et non-fonctionnelles, clairement séparées et numérotées",
+            "constraints": "Les contraintes techniques et générales qui s'appliquent au projet",
+            "deliverables": "Liste détaillée des livrables attendus, organisés par catégorie",
+            "timeline": "Calendrier prévisionnel avec phases et jalons sur 3-6 mois"
+        }}
+        
+        Réponds uniquement avec un objet JSON valide, sans autre texte d'introduction ou de conclusion.
+        """
+        
+        # Correct method call using client.models.generate_content instead of client.generate_content
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+        
+        # Parse the JSON from the response text
+        try:
+            import json
+            content = json.loads(response.text)
+            return jsonify({
+                'success': True, 
+                'content': content
+            })
+        except json.JSONDecodeError:
+            # If the response isn't valid JSON, extract it with regex
+            import re
+            json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+            if json_match:
+                try:
+                    content = json.loads(json_match.group(0))
+                    return jsonify({
+                        'success': True, 
+                        'content': content
+                    })
+                except:
+                    pass
+                    
+            return jsonify({
+                'success': False,
+                'message': 'Erreur de format dans la réponse IA',
+                'raw_response': response.text
+            }), 500
+            
+    except Exception as e:
+        print(f"AI generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erreur lors de la génération: {str(e)}'
+        }), 500
 
 @app.route('/get_task_assignees/<int:task_id>')
 def get_task_assignees(task_id):
