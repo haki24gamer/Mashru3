@@ -972,6 +972,15 @@ def update_member_role():
         ).first()
         
         if participation:
+            # --- ENFORCE AT LEAST ONE OWNER ---
+            # If changing from Owner to another role, check if there is another Owner
+            if participation.role == 'Owner' and new_role != 'Owner':
+                # Count number of Owners in this project
+                owner_count = Participate.query.filter_by(project_id=project_id, role='Owner').count()
+                if owner_count <= 1:
+                    return jsonify({'success': False, 'message': 'Il doit toujours y avoir au moins un Chef de projet dans le projet.'}), 400
+            # --- END ENFORCE ---
+
             participation.role = new_role
             db.session.commit()
             return jsonify({'success': True, 'message': 'Role updated successfully'})
@@ -1012,6 +1021,16 @@ def remove_member():
     
     # Check if user is trying to remove themselves
     if int(target_user_id) == session['user_id']:
+        # --- ENFORCE: If user is the only Owner, cannot quit ---
+        my_participation = Participate.query.filter_by(
+            user_id=session['user_id'],
+            project_id=project_id
+        ).first()
+        if my_participation and my_participation.role == 'Owner':
+            owner_count = Participate.query.filter_by(project_id=project_id, role='Owner').count()
+            if owner_count <= 1:
+                return jsonify({'success': False, 'message': 'Vous êtes le seul Chef de projet. Veuillez nommer un autre Chef de projet avant de quitter le projet.'}), 400
+        # --- END ENFORCE ---
         return jsonify({'success': False, 'message': 'You cannot remove yourself from the project'}), 400
     
     try:
@@ -1021,6 +1040,13 @@ def remove_member():
         ).first()
         
         if participation:
+            # --- ENFORCE AT LEAST ONE OWNER ---
+            if participation.role == 'Owner':
+                owner_count = Participate.query.filter_by(project_id=project_id, role='Owner').count()
+                if owner_count <= 1:
+                    return jsonify({'success': False, 'message': 'Il doit toujours y avoir au moins un Chef de projet dans le projet.'}), 400
+            # --- END ENFORCE ---
+
             # Remove user from project
             db.session.delete(participation)
             
