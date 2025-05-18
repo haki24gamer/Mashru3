@@ -38,8 +38,8 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
                                             <div class="task-users">
-                                                {% for user in task.assigned_users %}
-                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% for user_assigned in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user_assigned.name }}">{{ user_assigned.name[0]|upper }}</span>
                                                 {% endfor %}
                                             </div>
                                         </div>
@@ -90,8 +90,8 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
                                             <div class="task-users">
-                                                {% for user in task.assigned_users %}
-                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% for user_assigned in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user_assigned.name }}">{{ user_assigned.name[0]|upper }}</span>
                                                 {% endfor %}
                                             </div>
                                         </div>
@@ -142,8 +142,8 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
                                             <div class="task-users">
-                                                {% for user in task.assigned_users %}
-                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% for user_assigned in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user_assigned.name }}">{{ user_assigned.name[0]|upper }}</span>
                                                 {% endfor %}
                                             </div>
                                         </div>
@@ -194,8 +194,8 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">{{ task.priority }}</span>
                                             <div class="task-users">
-                                                {% for user in task.assigned_users %}
-                                                    <span class="user-initials" title="{{ user.name }}">{{ user.name[:1] }}</span>
+                                                {% for user_assigned in task.assigned_users %}
+                                                    <span class="user-initials" title="{{ user_assigned.name }}">{{ user_assigned.name[0]|upper }}</span>
                                                 {% endfor %}
                                             </div>
                                         </div>
@@ -205,6 +205,7 @@
                                                 <i class="material-icons-outlined">person_add</i>
                                             </button>
                                             {% endif %}
+                                            {# No edit/delete for DONE tasks by default, can be changed if needed #}
                                         </div>
                                     </div>
                                 </div>
@@ -554,6 +555,7 @@
 
     const projectParticipants = {{ participants | tojson }};
     let currentAssignTaskId = null; // To store the task ID for the assign modal
+    let currentEditTaskId = null; // To store the task ID for the edit modal
     let taskStatus = 'TODO';
 
     function setTaskStatus(status) {
@@ -599,15 +601,72 @@
     }
 
     function editTask(taskId) {
-        // Placeholder for edit task functionality
-        console.log('Edit task clicked for task ID:', taskId);
-        alert('La fonctionnalité de modification de tâche n\'est pas encore implémentée.');
-        // TODO: Implement task editing:
-        // 1. Fetch task details (similar to get_task in app.py but perhaps a dedicated route or use existing).
-        // 2. Populate a modal (e.g., a modified newTaskModal, let's call it editTaskModal).
-        // 3. On save, send a POST request to /update_task/<task_id> endpoint.
-        // 4. Reload or update UI.
+        currentEditTaskId = taskId;
+        fetch(`/get_task/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const task = data.task;
+                    document.getElementById('editTaskTitle').value = task.title;
+                    document.getElementById('editTaskDescription').value = task.description;
+                    document.getElementById('editTaskPriority').value = task.priority;
+                    document.getElementById('editTaskStartDate').value = task.start_date || '';
+                    document.getElementById('editTaskEndDate').value = task.end_date || '';
+                    // Note: Status is not typically edited here as it's managed by drag-and-drop.
+                    // If status editing is needed in this modal, add a select field for it.
+                    $('#editTaskModal').modal('show');
+                } else {
+                    alert('Erreur lors de la récupération des détails de la tâche: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching task details:', error);
+                alert('Erreur lors de la récupération des détails de la tâche.');
+            });
     }
+
+    function saveEditedTask() {
+        const taskId = currentEditTaskId;
+        if (!taskId) {
+            alert('Erreur: ID de tâche non trouvé pour la modification.');
+            return;
+        }
+
+        const title = document.getElementById('editTaskTitle').value;
+        const description = document.getElementById('editTaskDescription').value;
+        const priority = document.getElementById('editTaskPriority').value;
+        const startDate = document.getElementById('editTaskStartDate').value;
+        const endDate = document.getElementById('editTaskEndDate').value;
+
+        fetch(`/update_task/${taskId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                priority: priority,
+                start_date: startDate || null,
+                end_date: endDate || null
+                // status: document.getElementById('editTaskStatus').value // If status editing is added
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                $('#editTaskModal').modal('hide');
+                location.reload(); // Reload to see the updated task
+            } else {
+                alert('Erreur lors de la mise à jour de la tâche: ' + (data.message || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task:', error);
+            alert('Erreur lors de la mise à jour de la tâche.');
+        });
+    }
+
 
     function openAssignModal(taskId) {
         currentAssignTaskId = taskId;
@@ -760,6 +819,64 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#assignUserModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="saveTaskAssignments()">Sauvegarder les assignations</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">Modifier la tâche</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#editTaskModal').modal('hide')">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <div class="form-group">
+                        <label for="editTaskTitle">Titre de la tâche</label>
+                        <input type="text" class="form-control" id="editTaskTitle" placeholder="Entrez le titre de la tâche">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskDescription">Description</label>
+                        <textarea class="form-control" id="editTaskDescription" rows="3" placeholder="Entrez la description de la tâche"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskPriority">Priorité</label>
+                        <select class="form-control" id="editTaskPriority">
+                            <option value="low">low</option>
+                            <option value="medium">medium</option>
+                            <option value="high">high</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskStartDate">Date de début</label>
+                        <input type="date" class="form-control" id="editTaskStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskEndDate">Date de fin</label>
+                        <input type="date" class="form-control" id="editTaskEndDate">
+                    </div>
+                    <!-- If status editing is needed in this modal, add a select field here -->
+                    <!--
+                    <div class="form-group">
+                        <label for="editTaskStatus">Statut</label>
+                        <select class="form-control" id="editTaskStatus">
+                            <option value="TODO">À Faire</option>
+                            <option value="IN_PROGRESS">En cours</option>
+                            <option value="REVIEW">En révision</option>
+                            <option value="DONE">Terminé</option>
+                        </select>
+                    </div>
+                    -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#editTaskModal').modal('hide')">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditedTask()">Sauvegarder les modifications</button>
             </div>
         </div>
     </div>
