@@ -46,15 +46,15 @@
                                         <div class="task-actions mt-2 text-right">
                                             {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                                <i class="material-icons-outlined">person_add</i>
                                             </button>
                                             {% endif %}
                                             {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                                <i class="material-icons-outlined">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                                <i class="material-icons-outlined">delete</i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -98,15 +98,15 @@
                                         <div class="task-actions mt-2 text-right">
                                             {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                                <i class="material-icons-outlined">person_add</i>
                                             </button>
                                             {% endif %}
                                             {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                                <i class="material-icons-outlined">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                                <i class="material-icons-outlined">delete</i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -150,15 +150,15 @@
                                         <div class="task-actions mt-2 text-right">
                                             {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
+                                                <i class="material-icons-outlined">person_add</i>
                                             </button>
                                             {% endif %}
                                             {% if is_project_admin or is_assigned %}
                                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
+                                                <i class="material-icons-outlined">edit</i>
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                                <i class="material-icons-outlined">delete</i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -202,15 +202,7 @@
                                         <div class="task-actions mt-2 text-right">
                                             {% if is_project_admin %}
                                             <button class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openAssignModal('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">person_add</i>
-                                            </button>
-                                            {% endif %}
-                                            {% if is_project_admin or is_assigned %}
-                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">edit</i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask('{{ task.task_id }}');">
-                                                <i class="material-icons-outlined" style="font-size: 16px;">delete</i>
+                                                <i class="material-icons-outlined">person_add</i>
                                             </button>
                                             {% endif %}
                                         </div>
@@ -561,7 +553,7 @@
     }
 
     const projectParticipants = {{ participants | tojson }};
-
+    let currentAssignTaskId = null; // To store the task ID for the assign modal
     let taskStatus = 'TODO';
 
     function setTaskStatus(status) {
@@ -605,6 +597,97 @@
             alert('Failed to create task');
         });
     }
+
+    function editTask(taskId) {
+        // Placeholder for edit task functionality
+        console.log('Edit task clicked for task ID:', taskId);
+        alert('La fonctionnalité de modification de tâche n\'est pas encore implémentée.');
+        // TODO: Implement task editing:
+        // 1. Fetch task details (similar to get_task in app.py but perhaps a dedicated route or use existing).
+        // 2. Populate a modal (e.g., a modified newTaskModal, let's call it editTaskModal).
+        // 3. On save, send a POST request to /update_task/<task_id> endpoint.
+        // 4. Reload or update UI.
+    }
+
+    function openAssignModal(taskId) {
+        currentAssignTaskId = taskId;
+        // document.getElementById('assignTaskId').value = taskId; // If using a hidden input
+
+        const projectMembersListDiv = document.getElementById('projectMembersList');
+        projectMembersListDiv.innerHTML = ''; // Clear previous list
+
+        // Fetch current assignees for this task
+        fetch(`/get_task_assignees/${taskId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const assignedUserIds = data.assignee_ids;
+                    
+                    // Populate with project participants
+                    if (projectParticipants && projectParticipants.length > 0) {
+                        projectParticipants.forEach(participant => {
+                            const isChecked = assignedUserIds.includes(participant.user_id);
+                            const checkboxDiv = document.createElement('div');
+                            checkboxDiv.classList.add('form-check');
+                            checkboxDiv.innerHTML = `
+                                <input class="form-check-input" type="checkbox" value="${participant.user_id}" id="user-assign-${participant.user_id}" ${isChecked ? 'checked' : ''}>
+                                <label class="form-check-label" for="user-assign-${participant.user_id}">
+                                    ${participant.name} (${participant.email})
+                                </label>
+                            `;
+                            projectMembersListDiv.appendChild(checkboxDiv);
+                        });
+                    } else {
+                        projectMembersListDiv.innerHTML = '<p>Aucun membre dans ce projet à assigner.</p>';
+                    }
+                    $('#assignUserModal').modal('show');
+                } else {
+                    alert('Erreur lors de la récupération des assignés: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching task assignees:', error);
+                alert('Erreur lors de la récupération des assignés.');
+            });
+    }
+
+    function saveTaskAssignments() {
+        const taskId = currentAssignTaskId;
+        if (!taskId) {
+            alert('Erreur: ID de tâche non trouvé.');
+            return;
+        }
+
+        const selectedUserIds = [];
+        document.querySelectorAll('#projectMembersList .form-check-input:checked').forEach(checkbox => {
+            selectedUserIds.push(parseInt(checkbox.value));
+        });
+
+        fetch('/update_task_assignments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_id: taskId,
+                user_ids: selectedUserIds
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                $('#assignUserModal').modal('hide');
+                location.reload(); // Reload to see changes
+            } else {
+                alert('Erreur lors de la mise à jour des assignations: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task assignments:', error);
+            alert('Erreur lors de la mise à jour des assignations.');
+        });
+    }
+
 </script>
 
 <!-- New Task Modal -->
@@ -648,6 +731,35 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#newTaskModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="createTask()">Créer la tâche</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Users Modal -->
+<div class="modal fade" id="assignUserModal" tabindex="-1" role="dialog" aria-labelledby="assignUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignUserModalLabel">Assigner des utilisateurs à la tâche</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#assignUserModal').modal('hide')">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- <input type="hidden" id="assignTaskId"> --> <!-- Can use currentAssignTaskId variable instead -->
+                <form id="assignUserForm">
+                    <div class="form-group">
+                        <label>Membres du projet:</label>
+                        <div id="projectMembersList" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Participants will be loaded here by JavaScript -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#assignUserModal').modal('hide')">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveTaskAssignments()">Sauvegarder les assignations</button>
             </div>
         </div>
     </div>
