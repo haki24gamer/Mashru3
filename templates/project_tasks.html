@@ -670,19 +670,15 @@
 
     function openAssignModal(taskId) {
         currentAssignTaskId = taskId;
-        // document.getElementById('assignTaskId').value = taskId; // If using a hidden input
-
         const projectMembersListDiv = document.getElementById('projectMembersList');
         projectMembersListDiv.innerHTML = ''; // Clear previous list
 
-        // Fetch current assignees for this task
         fetch(`/get_task_assignees/${taskId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     const assignedUserIds = data.assignee_ids;
                     
-                    // Populate with project participants
                     if (projectParticipants && projectParticipants.length > 0) {
                         projectParticipants.forEach(participant => {
                             const isChecked = assignedUserIds.includes(participant.user_id);
@@ -772,9 +768,9 @@
                     <div class="form-group">
                         <label for="taskPriority">Priorité</label>
                         <select class="form-control" id="taskPriority">
-                            <option>low</option>
-                            <option>medium</option>
-                            <option>high</option>
+                            <option value="low">low</option>
+                            <option value="medium">medium</option>
+                            <option value="high">high</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -877,6 +873,41 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#editTaskModal').modal('hide')">Annuler</button>
                 <button type="button" class="btn btn-primary" onclick="saveEditedTask()">Sauvegarder les modifications</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Generated Tasks Modal -->
+<div class="modal fade" id="aiGeneratedTasksModal" tabindex="-1" role="dialog" aria-labelledby="aiGeneratedTasksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aiGeneratedTasksModalLabel">Tâches générées par IA</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#aiGeneratedTasksModal').modal('hide')">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="ai-tasks-loading" style="text-align: center;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Chargement...</span>
+                    </div>
+                    <p>Génération des tâches en cours...</p>
+                </div>
+                <div id="ai-tasks-error" class="alert alert-danger" style="display: none;">
+                    <!-- Error message will be shown here -->
+                </div>
+                <div id="ai-tasks-container" style="display: none;">
+                    <p>Veuillez sélectionner les tâches que vous souhaitez ajouter au projet :</p>
+                    <div id="ai-tasks-list" style="max-height: 400px; overflow-y: auto;">
+                        <!-- AI Generated tasks will be listed here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#aiGeneratedTasksModal').modal('hide')">Annuler</button>
+                <button type="button" class="btn btn-primary" id="addSelectedTasksBtn" onclick="addSelectedTasks()" style="display: none;">Ajouter les tâches sélectionnées</button>
             </div>
         </div>
     </div>
