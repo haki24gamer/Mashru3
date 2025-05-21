@@ -18,6 +18,11 @@
             <div class="col-md-6 d-flex align-items-center justify-content-center order-2 order-md-2">
                 <div class="w-100 px-3 px-md-0" style="max-width: 600px;">
                     <h1 class="text-left font-weight-bold mb-4 custom-heading">S'inscrire</h1>
+                    {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error }}
+                        </div>
+                    {% endif %}
                     <form action="/inscription" method="POST">
                         <div class="form-row">
                             <div class="form-group col-md-12">
@@ -38,7 +43,7 @@
                             <p class="password-hint mt-2">Il doit contenir au moins 8 caractères, incluant des lettres et des chiffres.</p>
                         </div>
                         <div class="form-group form-check">
-                            <input type="checkbox" class="form-check-input" id="terms" required>
+                            <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
                             <label class="form-check-label" for="terms">J'accepte les Conditions Générales</label>
                         </div>
                         <button type="submit" class="btn btn-primary btn-block">S'inscrire</button>

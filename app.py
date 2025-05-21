@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import time
 from google import genai
 
-client = genai.Client(api_key="AIzaSyCejl04BWKifSf0abzSdJ7AE3UKIyjG17s")
+client = genai.Client(api_key="AIzaSyD6K3MOvylwdmM8EMehY6R9Ct2gW-zgWC8")
 
 # response = client.models.generate_content(
 #     model="gemini-2.0-flash", contents="Explain how AI works in a few words")
@@ -37,8 +37,8 @@ db = SQLAlchemy(app)
 # Configure Flask-Mail for Gmail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
-app.config['MAIL_USERNAME'] = 'mashru3.djib@gmail.com'
-app.config['MAIL_PASSWORD'] = 'csmk klck zzxm oldg '
+app.config['MAIL_USERNAME'] = 'mashru3.services@gmail.com'
+app.config['MAIL_PASSWORD'] = 'sebk djkp xwhe yexy '
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 mail = Mail(app)
