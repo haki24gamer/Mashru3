@@ -37,8 +37,8 @@ db = SQLAlchemy(app)
 # Configure Flask-Mail for Gmail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
-app.config['MAIL_USERNAME'] = 'mashru3.services@gmail.com'
-app.config['MAIL_PASSWORD'] = 'sebk djkp xwhe yexy '
+app.config['MAIL_USERNAME'] = 'taajr.services@gmail.com'
+app.config['MAIL_PASSWORD'] = 'yrdr vnpx ezix eivc '
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 mail = Mail(app)
